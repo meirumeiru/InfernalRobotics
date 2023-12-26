@@ -188,14 +188,25 @@ namespace InfernalRobotics_v3.Command
 				List<IServo> servosNew;
 				if(groupServos.TryGetValue(g.Name, out servosNew))
 				{
+					HashSet<IServo> servosNotToAdd = new HashSet<IServo>();
+					HashSet<IServo> servosToRemove = new HashSet<IServo>();
+
 					foreach(IServo s in g.Servos)
 					{
-						if(!servosNew.Contains(s))
-							g.RemoveControl(s);
+						if(servosNew.Contains(s))
+							servosNotToAdd.Add(s);
+						else
+							servosToRemove.Add(s);
 					}
 
+					foreach(IServo s in servosToRemove)
+						g.RemoveControl(s);
+
 					foreach(IServo s in servosNew)
-						g.AddControl(s, -1);
+					{
+						if(!servosNotToAdd.Contains(s))
+							g.AddControl(s, -1);
+					}
 
 					ServoGroups.Add(g);
 
@@ -242,6 +253,9 @@ namespace InfernalRobotics_v3.Command
 
 		private void OnEditorLoad(ShipConstruct s, KSP.UI.Screens.CraftBrowserDialog.LoadType t)
 		{
+			if(t == KSP.UI.Screens.CraftBrowserDialog.LoadType.Merge)
+				return; // ignore this (-> we process the parts when we attach them)
+
 			RebuildServoGroupsEditor(s);
 
 			if(Gui.WindowManager.Instance != null)
@@ -316,14 +330,25 @@ namespace InfernalRobotics_v3.Command
 						List<IServo> servosNew;
 						if(groupServos.TryGetValue(g.Name, out servosNew))
 						{
+							HashSet<IServo> servosNotToAdd = new HashSet<IServo>();
+							HashSet<IServo> servosToRemove = new HashSet<IServo>();
+
 							foreach(IServo s in g.Servos)
 							{
-								if(!servosNew.Contains(s))
-									g.RemoveControl(s);
+								if(servosNew.Contains(s))
+									servosNotToAdd.Add(s);
+								else
+									servosToRemove.Add(s);
 							}
 
+							foreach(IServo s in servosToRemove)
+								g.RemoveControl(s);
+
 							foreach(IServo s in servosNew)
-								g.AddControl(s, -1);
+							{
+								if(!servosNotToAdd.Contains(s))
+									g.AddControl(s, -1);
+							}
 
 							ServoGroups.Add(g);
 
@@ -660,7 +685,7 @@ namespace InfernalRobotics_v3.Command
 				   && (Controller.Instance.ServoGroups[j].Name.CompareTo(name) != 0))
 					++j;
 
-				if(j >= Controller.Instance.ServoGroups.Count)
+				if(j < Controller.Instance.ServoGroups.Count)
 					continue; // already found
 
 				ServoGroup g;
