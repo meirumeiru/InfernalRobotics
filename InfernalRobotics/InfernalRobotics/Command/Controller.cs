@@ -179,7 +179,7 @@ namespace InfernalRobotics_v3.Command
 				}
 			}
 
-			// re-use existing groups
+			// re-use existing groups (currently never used, because we always delete the existing groups prior to calling this function)
 
 			for(int j = 0; j < oldServoGroups.Count; j++)
 			{
@@ -242,6 +242,9 @@ namespace InfernalRobotics_v3.Command
 			ServoGroups = null;
 			servosState = null;
 
+			if(EditorLogic.fetch.ship != null)
+				RebuildServoGroupsEditor(EditorLogic.fetch.ship);
+
 			if(Gui.WindowManager.Instance != null)
 				Gui.WindowManager.Instance.Invalidate();
 
@@ -249,22 +252,6 @@ namespace InfernalRobotics_v3.Command
 				Gui.IRBuildAid.IRBuildAidManager.Reset();
 
 			Logger.Log ("OnEditorStarted called", Logger.Level.Debug);
-		}
-
-		private void OnEditorLoad(ShipConstruct s, KSP.UI.Screens.CraftBrowserDialog.LoadType t)
-		{
-			if(t == KSP.UI.Screens.CraftBrowserDialog.LoadType.Merge)
-				return; // ignore this (-> we process the parts when we attach them)
-
-			RebuildServoGroupsEditor(s);
-
-			if(Gui.WindowManager.Instance != null)
-				Gui.WindowManager.Instance.Invalidate();
-
-			if(Gui.IRBuildAid.IRBuildAidManager.Instance)
-				Gui.IRBuildAid.IRBuildAidManager.Reset();
-			
-			Logger.Log ("OnEditorLoad called", Logger.Level.Debug);
 		}
 
 		// internal (not private) because we need to call it from "ModuleIRServo_v3.RemoveFromSymmetry2"
@@ -499,7 +486,6 @@ namespace InfernalRobotics_v3.Command
 			else if(HighLogic.LoadedSceneIsEditor)
 			{
 				GameEvents.onEditorStarted.Add(OnEditorStarted);
-				GameEvents.onEditorLoad.Add(OnEditorLoad);
 				GameEvents.onEditorPartEvent.Add(OnEditorPartEvent);
 				GameEvents.onEditorUndo.Add(OnEditorUnOrRedo);
 				GameEvents.onEditorRedo.Add(OnEditorUnOrRedo);
@@ -544,7 +530,6 @@ namespace InfernalRobotics_v3.Command
 			GameEvents.onVesselGoOnRails.Remove(OnVesselUnloaded);
 
 			GameEvents.onEditorStarted.Remove(OnEditorStarted);
-			GameEvents.onEditorLoad.Remove(OnEditorLoad);
 			GameEvents.onEditorPartEvent.Remove(OnEditorPartEvent);
 			GameEvents.onEditorUndo.Remove(OnEditorUnOrRedo);
 			GameEvents.onEditorRedo.Remove(OnEditorUnOrRedo);

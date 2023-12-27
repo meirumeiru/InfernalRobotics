@@ -470,10 +470,11 @@ namespace InfernalRobotics_v3.Gui
 			{
 				foreach(var v in _servoGroupUIControls)
 				{
-					var button = v.Value.GetChild("ServoGroupControlsHLG").GetChild("IKModeToggleButton");
-					button.SetActive(true);
+					var hlg = v.Value.GetChild("ServoGroupControlsHLG");
 
-					button.GetComponent<Toggle>().interactable = ((Controller._IKServoGroup == null) || (v.Key == Controller._IKServoGroup));
+					var ikModeToggleButton = hlg.GetChild("IKModeToggleButton");
+					ikModeToggleButton.SetActive(true);
+					ikModeToggleButton.GetComponent<Toggle>().interactable = ((Controller._IKServoGroup == null) || (v.Key == Controller._IKServoGroup));
 				}
 			}
 		}

@@ -3194,7 +3194,7 @@ namespace InfernalRobotics_v3.Module
 			float targetPosition = commandedPosition + deltaPosition;
 
 			ip.maxAcceleration = _acceleration * factorAcceleration;
-			ip.SetCommand(targetPosition, Mathf.Clamp(targetSpeed, 0f, speedLimit) * factorSpeed);
+			ip.SetCommand(targetPosition, Mathf.Clamp(targetSpeed, 0.001f, speedLimit) * factorSpeed);
 
 			requestedPositionIsDefined = false;
 		}
