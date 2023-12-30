@@ -137,28 +137,24 @@ namespace InfernalRobotics_v3.Command
 		}
 
 		// internal (not private) because we need to call it from "ModuleIRServo_v3.RemoveFromSymmetry2"
-		internal void RebuildServoGroupsEditor(ShipConstruct ship = null)
+		internal void RebuildServoGroupsEditor()
 		{
-			if(ship == null)
-				ship = EditorLogic.fetch.ship;
+			ServoGroups = null;
+			servosState = null;
 
-			Dictionary<IServo, IServoState> oldServoState = (Instance.servosState != null) ? Instance.servosState : new Dictionary<IServo, IServoState>();
-			servosState = new Dictionary<IServo, IServoState>();
+			if(EditorLogic.fetch.ship == null)
+				return;
 
-			List<IServoGroup> oldServoGroups = (ServoGroups != null) ? ServoGroups : new List<IServoGroup>();
 			ServoGroups = new List<IServoGroup>();
+			servosState = new Dictionary<IServo, IServoState>();
 
 			var groupServos = new Dictionary<string, List<IServo>>();
 
-			foreach(Part p in ship.Parts)
+			foreach(Part p in EditorLogic.fetch.ship.Parts)
 			{
 				foreach(var servo in p.ToServos())
 				{
-					IServoState state;
-					if(oldServoState.TryGetValue(servo, out state))
-						servosState.Add(servo, state);
-					else
-						servosState.Add(servo, new IServoState());
+					servosState.Add(servo, new IServoState());
 
 					if(!string.IsNullOrEmpty(servo.GroupName))
 					{
@@ -178,45 +174,6 @@ namespace InfernalRobotics_v3.Command
 					}
 				}
 			}
-
-			// re-use existing groups (currently never used, because we always delete the existing groups prior to calling this function)
-
-			for(int j = 0; j < oldServoGroups.Count; j++)
-			{
-				ServoGroup g = (ServoGroup)oldServoGroups[j];
-
-				List<IServo> servosNew;
-				if(groupServos.TryGetValue(g.Name, out servosNew))
-				{
-					HashSet<IServo> servosNotToAdd = new HashSet<IServo>();
-					HashSet<IServo> servosToRemove = new HashSet<IServo>();
-
-					foreach(IServo s in g.Servos)
-					{
-						if(servosNew.Contains(s))
-							servosNotToAdd.Add(s);
-						else
-							servosToRemove.Add(s);
-					}
-
-					foreach(IServo s in servosToRemove)
-						g.RemoveControl(s);
-
-					foreach(IServo s in servosNew)
-					{
-						if(!servosNotToAdd.Contains(s))
-							g.AddControl(s, -1);
-					}
-
-					ServoGroups.Add(g);
-
-					groupServos.Remove(g.Name);
-				}
-
-				oldServoGroups.RemoveAt(j--);
-			}
-
-			// add new groups
 
 			foreach(var kv in groupServos)
 			{
@@ -239,11 +196,7 @@ namespace InfernalRobotics_v3.Command
 	   
 		private void OnEditorStarted()
 		{
-			ServoGroups = null;
-			servosState = null;
-
-			if(EditorLogic.fetch.ship != null)
-				RebuildServoGroupsEditor(EditorLogic.fetch.ship);
+			RebuildServoGroupsEditor();
 
 			if(Gui.WindowManager.Instance != null)
 				Gui.WindowManager.Instance.Invalidate();
@@ -255,15 +208,23 @@ namespace InfernalRobotics_v3.Command
 		}
 
 		// internal (not private) because we need to call it from "ModuleIRServo_v3.RemoveFromSymmetry2"
+		private bool bRebuildingServoGroupsFlight = false;
+
 		internal void RebuildServoGroupsFlight()
 		{
-			StartCoroutine(_RebuildServoGroupsFlight());
+			if(!bRebuildingServoGroupsFlight)
+			{
+				bRebuildingServoGroupsFlight = true;
+				StartCoroutine(_RebuildServoGroupsFlight());
+			}
 		}
 
 		internal IEnumerator _RebuildServoGroupsFlight()
 		{
 			yield return new WaitForFixedUpdate();
 			yield return new WaitForFixedUpdate(); // would most likely also work with just one WaitForFixedUpdate but it doesn't hurt to wait longer
+
+			bRebuildingServoGroupsFlight = false;
 
 			Dictionary<IServo, IServoState> oldServoState = (Instance.servosState != null) ? Instance.servosState : new Dictionary<IServo, IServoState>();
 			servosState = new Dictionary<IServo, IServoState>();
@@ -310,13 +271,17 @@ namespace InfernalRobotics_v3.Command
 
 				for(int j = 0; j < oldServoGroups.Count; j++)
 				{
-					if(oldServoGroups[j].Vessel == vessel)
+//					if(oldServoGroups[j].Vessel == vessel)
+// FEHLER, das hier ignorieren wir, weil es nicht wirklich passt -> am Anfang ist vessel == null für Gruppen, weil die nicht gesetzt sind im Part...
 					{
 						ServoGroup g = (ServoGroup)oldServoGroups[j];
 
 						List<IServo> servosNew;
 						if(groupServos.TryGetValue(g.Name, out servosNew))
 						{
+// FEHLER, Murks-Bugfix? mal sehen wegen Identifikation später dann...
+g.Vessel = vessel;
+
 							HashSet<IServo> servosNotToAdd = new HashSet<IServo>();
 							HashSet<IServo> servosToRemove = new HashSet<IServo>();
 
@@ -654,9 +619,6 @@ namespace InfernalRobotics_v3.Command
 			if(Controller.Instance.ServoGroups == null)
 				Controller.Instance.ServoGroups = new List<IServoGroup>();
 
-			if(HighLogic.LoadedSceneIsFlight) // in EditorMode we do this in OnEditorStarted -> we have a load for every sub assembly there
-				Controller.Instance.ServoGroups.Clear();
-
 			int Count = int.Parse(config.GetValue("Groups"));
 
 			for(int i = 0; i < Count; i++)
@@ -665,6 +627,7 @@ namespace InfernalRobotics_v3.Command
 
 				string name = groupNode.GetValue("Name");
 
+// FEHLER, später das Zeug anders identifizieren, weil es so Kollisionen geben kann, wenn mehrere Schiffe den gleichen Namen verwenden -> und das kommt dann echt nicht gut...
 				int j = 0;
 				while((j < Controller.Instance.ServoGroups.Count)
 				   && (Controller.Instance.ServoGroups[j].Name.CompareTo(name) != 0))

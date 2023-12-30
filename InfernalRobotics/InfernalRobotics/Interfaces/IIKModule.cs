@@ -16,6 +16,8 @@ namespace InfernalRobotics_v3.Interfaces
 		void SetDirectMode(Interfaces.IServoGroup g, bool active);
 		bool GetDirectMode(Interfaces.IServoGroup g);
 
+		void Relax(Interfaces.IServoGroup g, int factor);
+
 		void SelectEndEffector(Interfaces.IServoGroup g);
 
 		void SetShowPosition(Interfaces.IServoGroup g, bool show);

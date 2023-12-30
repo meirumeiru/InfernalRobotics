@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<KSPBundleDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" UrlName="ir_ui_objects_v3" Name="ir_ui_objects_v3" CreatedTime="-8585103614820531789" AutoLoad="false">
+<KSPBundleDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" UrlName="ir_ui_objects_v3" Name="ir_ui_objects_v3" CreatedTime="-8584979124254484074" AutoLoad="false">
   <Author />
   <Info />
   <Assets>
@@ -37,6 +37,7 @@
     <Asset Name="presetmode" Path="Assets/Images/Icons/presetmode.png" Type="Texture2D" Url="Images/Icons/presetmode" AutoLoad="false" />
     <Asset Name="presets" Path="Assets/Images/Icons/presets.png" Type="Texture2D" Url="Images/Icons/presets" AutoLoad="false" />
     <Asset Name="prev" Path="Assets/Images/Icons/prev.png" Type="Texture2D" Url="Images/Icons/prev" AutoLoad="false" />
+    <Asset Name="relax" Path="Assets/Images/Icons/relax.png" Type="Texture2D" Url="Images/Icons/relax" AutoLoad="false" />
     <Asset Name="revert" Path="Assets/Images/Icons/revert.png" Type="Texture2D" Url="Images/Icons/revert" AutoLoad="false" />
     <Asset Name="right" Path="Assets/Images/Icons/right.png" Type="Texture2D" Url="Images/Icons/right" AutoLoad="false" />
     <Asset Name="right_toggle" Path="Assets/Images/Icons/right_toggle.png" Type="Texture2D" Url="Images/Icons/right_toggle" AutoLoad="false" />

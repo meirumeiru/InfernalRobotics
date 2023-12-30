@@ -62,6 +62,7 @@ namespace InfernalRobotics_v3.Command
 		public Vessel Vessel
 		{
 			get { return vessel; }
+			set { vessel = value; } // FEHLER, temp
 		}
 
 		public string Name 

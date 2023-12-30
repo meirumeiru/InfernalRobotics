@@ -401,6 +401,9 @@ namespace InfernalRobotics_v3.Gui
 			ikDirectModeToggle.onValueChanged.AddListener(v =>
 				{ Controller._IKModule.SetDirectMode(g.group, v); });
 
+			var ikRelaxButton = hlg.GetChild("IKRelaxButton").GetComponent<Button>();
+			ikRelaxButton.onClick.AddListener(() => { Controller._IKModule.Relax(g.group, 50); });
+
 			var ikEndEffectorButton = hlg.GetChild("IKEndEffectorButton").GetComponent<Button>();
 			ikEndEffectorButton.onClick.AddListener(() => { Controller._IKModule.SelectEndEffector(g.group); });
 
@@ -495,6 +498,7 @@ namespace InfernalRobotics_v3.Gui
 
 			hlg.GetChild("IKLimiterButton").SetActive(active);
 			hlg.GetChild("IKDirectModeButton").SetActive(active);
+			hlg.GetChild("IKRelaxButton").SetActive(active);
 			hlg.GetChild("IKEndEffectorButton").SetActive(active);
 			hlg.GetChild("IKPositionVisibleButton").SetActive(active);
 			hlg.GetChild("IKAction1Button").SetActive(active);
