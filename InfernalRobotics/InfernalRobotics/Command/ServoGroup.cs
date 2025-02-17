@@ -312,10 +312,5 @@ namespace InfernalRobotics_v3.Command
 		// BuildAid
 
 		public bool BuildAid { get; set; }
-
-		////////////////////////////////////////
-		// IK
-
-		public bool bLimiter = false; // FEHLER, experimentell
 	}
 }

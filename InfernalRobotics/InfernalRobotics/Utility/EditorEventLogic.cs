@@ -156,7 +156,7 @@ namespace InfernalRobotics_v3.Utility
 				break;
 
 			case ConstructionEventType.PartDragging:
-				if(IsMirrored(part))
+				if(IsMirrored(part) && (part.potentialParent != null) && IsMirroredOrNotSymmetrical(part.potentialParent))
 				{
 					Part mirrorRoot; bool hasIR;
 					Vector3 parentPosition = Vector3.zero; Quaternion parentRotation = Quaternion.identity;
@@ -188,28 +188,7 @@ namespace InfernalRobotics_v3.Utility
 				}
 				break;
 			}
-
-check(part); // FEHLER, raus, wenn's dann stimmt
 		}
-
-void check(Part p)
-{
-	bool bFailure = false;
-
-	ModuleIREditorHelper m = p.GetComponent<ModuleIREditorHelper>();
-	if(!m)
-		bFailure = true;
-
-	foreach(Part sp in p.symmetryCounterparts)
-	{
-		ModuleIREditorHelper sm = sp.GetComponent<ModuleIREditorHelper>();
-		if(!sm)
-			bFailure = true;
-	}
-
-	if(bFailure)
-		Logger.Log("check failed!!!!!!!", Logger.Level.Error);
-}
 
 		////////////////////
 		// Helper Functions
@@ -217,6 +196,11 @@ void check(Part p)
 		bool IsMirrored(Part part)
 		{
 			return (part.symmetryCounterparts.Count > 0) && (part.symMethod == SymmetryMethod.Mirror);
+		}
+
+		bool IsMirroredOrNotSymmetrical(Part part)
+		{
+			return (part.symmetryCounterparts.Count == 0) || (part.symMethod == SymmetryMethod.Mirror);
 		}
 
 		ModuleIRServo_v3 IsIR(Part part)
@@ -312,10 +296,11 @@ void check(Part p)
 		////////////////////
 		// Functions
 
-		// if the part is a ModuleIRServo_v3 with a parent, then we calculate
-		// the rotation in the 0-position
-		// (unattached parts are rotated already due to the needs of the editor
-		// -> see OnEditorAttached/OnEditorDetached)
+		/*
+		 * if the part is a ModuleIRServo_v3 with a parent, then we calculate the rotation in the
+		 * 0-position (unattached parts are rotated already due to the needs of the editor
+		 * -> see OnEditorAttached/OnEditorDetached)
+		 */
 
 		void CalculateNeutralRotation(Part part, ref Quaternion localRotation, ref AttachNode attachNode)
 		{

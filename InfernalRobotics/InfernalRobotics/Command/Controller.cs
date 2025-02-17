@@ -104,6 +104,7 @@ namespace InfernalRobotics_v3.Command
 				return;
 
 			Instance.servosState.Remove(servo);
+			Instance._ServoToServoInterceptor.Remove(servo);
 
 			if(Instance.ServoGroups == null)
 				return;
@@ -124,8 +125,6 @@ namespace InfernalRobotics_v3.Command
 
 				servo.GroupName = GroupName; // restore (RemoveControl removes the GroupNames from this value, but that's not what we want when detaching the servo)
 			}
-
-			Instance._ServoToServoInterceptor.Remove(servo);
 
 			if(Gui.WindowManager.Instance)
 				Gui.WindowManager.Instance.Invalidate();
@@ -357,6 +356,10 @@ g.Vessel = vessel;
 				OnEditorPartAttach(part);
 				break;
 
+			case ConstructionEventType.PartSymmetryDeleted:
+				OnEditorPartRemove(part); // we have to handle this event, because we don't get a "PartDetached" if a symmetric part is detached instead of the original one
+				break;
+
 			case ConstructionEventType.PartDetached:
 				OnEditorPartRemove(part);
 				break;
@@ -511,7 +514,7 @@ g.Vessel = vessel;
 				ray = Camera.main.ScreenPointToRay(Input.mousePosition);
 
 			RaycastHit hit;
-			if(Physics.Raycast(ray, out hit, 557059))
+			if(Physics.Raycast(ray, out hit, 1000, 557059))
 				return hit.transform.gameObject.GetComponent<Part>();
 			else
 				return null;

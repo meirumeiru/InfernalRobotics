@@ -16,8 +16,9 @@ namespace InfernalRobotics_v3.Servo
 		public float maxAcceleration
 		{
 			get { return _maxAcceleration; }
-			set { _maxAcceleration = (value < 0.001f) ? 0.001f : value; }
+			set { _maxAcceleration = (value < 0.05f) ? 0.05f : value; }
 		}
+
 
 		private enum TypeOfMovement { Stopped = 0, Adjust = 1, Accel = 0x40, Decel = 0x80, UpAccel = 0x50, Up = 0x10, UpDecel = 0x90, DownAccel = 0x60, Down = 0x20, DownDecel = 0xa0 };
 		private TypeOfMovement MovingType;

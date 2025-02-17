@@ -10,7 +10,7 @@ using System.Runtime.InteropServices;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("MagicSmokeIndustries")]
 [assembly: AssemblyProduct("InfernalRobotics")]
-[assembly: AssemblyCopyright("Copyright ©  2023")]
+[assembly: AssemblyCopyright("Copyright ©  2025")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 
@@ -35,8 +35,8 @@ using System.Runtime.InteropServices;
 // by using the '*' as shown below:
 // [assembly: AssemblyVersion("1.0.*")]
 
-[assembly: AssemblyVersion("3.1.17.0")]
-[assembly: AssemblyFileVersion("3.1.17.0")]
+[assembly: AssemblyVersion("3.1.18.0")]
+[assembly: AssemblyFileVersion("3.1.18.0")]
 
 
 [assembly: KSPAssembly("InfernalRoboticsNext", 3, 1)]

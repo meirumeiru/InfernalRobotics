@@ -1,43 +1,9 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 
-using KSP.IO;
 using UnityEngine;
 
 namespace InfernalRobotics_v3.Module
 {
-	public struct ScalingFactor
-	{
-		public struct FactorSet
-		{
-			private float _linear;
-
-			public FactorSet(float factor)
-			{
-				_linear = factor;
-			}
-
-			public float linear { get { return _linear; } }
-			public float quadratic { get { return _linear * _linear; } }
-			public float cubic { get { return _linear * _linear * _linear; } }
-		}
-
-		FactorSet _absolute;
-	//	FactorSet _relative;
-
-		public ScalingFactor(float abs/*, float rel*/)
-		{
-			_absolute = new FactorSet(abs);
-	//		_relative = new FactorSet(rel);
-		}
-
-		public FactorSet absolute { get { return _absolute; } }
-	//	public FactorSet relative { get { return _relative; } }
-	}
-
 	public class ModuleIRVariant : PartModule
 	{
 		private struct IRVariant
@@ -138,16 +104,6 @@ namespace InfernalRobotics_v3.Module
 		////////////////////////////////////////
 		// Functions
 
-		private bool HasTweakScale()
-		{
-	//		for(int i = 0; i < part.Modules.Count; i++)
-	//		{
-	//			if(part.Modules[i].name == "TweakScale")
-	//				return true;
-	//		}
-			return false;
-		}
-
 		private void MoveNode(AttachNode node, AttachNode baseNode, float factor)
         {
 			Vector3 deltaPos = node.position;
@@ -172,6 +128,14 @@ namespace InfernalRobotics_v3.Module
 			}
         }
 
+		// we need to have our own copy of the DragCubes, otherwise we modify the ones in the partPrefab
+		private void PrepareDragCubes()
+		{
+			ConfigNode databaseConfig = PartLoader.Instance.GetDatabaseConfig(part.partInfo.partPrefab, "DRAG_CUBE");
+			if(databaseConfig != null)
+				part.DragCubes.LoadCubes(databaseConfig);
+		}
+
 		private void ScaleDragCubes(float factor)
 		{
 			for(int ic = 0; ic < part.DragCubes.Cubes.Count; ic++)
@@ -190,10 +154,6 @@ namespace InfernalRobotics_v3.Module
 
 		public void RefreshVariant(float factor)
 		{
-			if(HasTweakScale())
-				return; // if someone is using TweakScale, we don't do anything
-// FEHLER, mit TweakScale ginge sowieso nix -> andere Lösung finden um die AttachNodes und Kinder zu drehen -> direkt im OnRescale vom Servo oder so
-
 			part.rescaleFactor = part.partInfo.partPrefab.rescaleFactor * factor;
 
 			Transform modelTransform = part.transform.Find("model");
@@ -245,13 +205,13 @@ namespace InfernalRobotics_v3.Module
 				}
 			}
 
-// FEHLER, reset noch einbauen -> genau wie bei allen anderen Teils auch (Node ist glaub schon so? oder?)
-			ScaleDragCubes(factor / currentFactor);
+			PrepareDragCubes();
+			ScaleDragCubes(factor);
 
 			ModuleIRServo_v3 servo = part.GetComponent<ModuleIRServo_v3>();
 
 			if(servo != null)
-				servo.OnRescale(new ScalingFactor(factor));
+				servo.OnRescale(factor);
 
 			currentFactor = factor;
 
@@ -302,9 +262,6 @@ namespace InfernalRobotics_v3.Module
 				m.Add(variantList[i].displayName);
 
 			((UI_ChooseOption)Fields["variantIndex"].uiControlEditor).options = m.ToArray();
-
-			if(HasTweakScale())
-				Fields["variantIndex"].guiActiveEditor = false; // if someone is using TweakScale, we don't show up
 		}
 
 		private void DetachContextMenu()
