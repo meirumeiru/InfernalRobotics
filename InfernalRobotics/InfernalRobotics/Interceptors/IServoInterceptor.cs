@@ -1,13 +1,9 @@
-﻿using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using System.Collections.Generic;
 
-using KSP.IO;
 using UnityEngine;
 
 using InfernalRobotics_v3.Interfaces;
+
 
 namespace InfernalRobotics_v3.Interceptors
 {
@@ -76,10 +72,10 @@ namespace InfernalRobotics_v3.Interceptors
 			get { return p; }
 		}
 
-		public string GroupName
+		public string GroupName_
 		{
-			get { return s.GroupName; }
-			set { s.GroupName = value; }
+			get { return s.GroupName_; }
+			set { s.GroupName_ = value; }
 		}
 
 		////////////////////////////////////////

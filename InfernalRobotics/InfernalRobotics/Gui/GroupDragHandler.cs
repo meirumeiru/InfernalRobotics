@@ -1,15 +1,12 @@
 ﻿using UnityEngine;
-using System.Collections;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using System;
+
 
 namespace InfernalRobotics_v3.Gui
 {
 	public class GroupDragHandler : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 	{
-		public int Id;
-
 		public Canvas mainCanvas;
 		public UnityEngine.Sprite background;
 
@@ -46,10 +43,7 @@ namespace InfernalRobotics_v3.Gui
 
 		public virtual void OnBeginDrag(PointerEventData eventData)
 		{
-//anders machen... das drag teil kleiner gestalten oder so und das original liegen lassen oder ausblenden halt und 'ne kopie machen oder was weiss ich...
-//denn, ziehe ich's nach ganz oben, muss es ja kopiert werden
-
-			draggedItem = this.transform.parent.parent.gameObject; //need to get the whole line as dragged item
+			draggedItem = this.transform.parent.parent.gameObject; // need to get the whole line as dragged item
 			dropZone = draggedItem.transform.parent;
 			startingSiblingIndex = draggedItem.transform.GetSiblingIndex();
 
@@ -63,7 +57,7 @@ namespace InfernalRobotics_v3.Gui
 
 			var le = placeholder.AddComponent<LayoutElement>();
 			le.preferredHeight = startingHeight = GetDraggedItemHeight();
-			//le.flexibleWidth = 1;
+			// le.flexibleWidth = 1;
 
 			animationHelper = draggedItem.AddComponent<UIAnimationHelper>();
 			animationHelper.SetHeight = SetPlaceholderHeight;
@@ -91,7 +85,7 @@ namespace InfernalRobotics_v3.Gui
 			if(RectTransformUtility.ScreenPointToLocalPointInRectangle(mainCanvas.transform as RectTransform, eventData.position, eventData.pressEventCamera, out localPointerPosition))
 				rt.localPosition = localPointerPosition - startingPosition;
 			
-			//we don't want to change siblings while we are still animating
+			// we don't want to change siblings while we are still animating
 			if(animationHelper.isHeightActive)
 				return;
 
@@ -146,7 +140,7 @@ namespace InfernalRobotics_v3.Gui
 			}
 
 			var groupDropHandler = dropZone.GetComponent<GroupDropHandler>();
-			if( groupDropHandler != null)
+			if(groupDropHandler != null)
 				groupDropHandler.onGroupDrop(this);
 
 			draggedItem.transform.SetParent(dropZone, false);

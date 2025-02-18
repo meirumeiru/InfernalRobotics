@@ -1,5 +1,7 @@
 ﻿using System;
+
 using UnityEngine;
+
 
 namespace InfernalRobotics_v3.Effects
 {

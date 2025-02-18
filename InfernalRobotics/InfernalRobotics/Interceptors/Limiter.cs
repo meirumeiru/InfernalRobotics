@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace InfernalRobotics_v3.Interceptors
+﻿namespace InfernalRobotics_v3.Interceptors
 {
 	class Limiter : Interfaces.ILimiter
 	{

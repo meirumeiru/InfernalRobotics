@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Reflection;
+
 using UnityEngine;
 
 
@@ -14,38 +15,23 @@ namespace InfernalRobotics_v3.Utility
 		// <param name="fileName">Filename of the image in side the Textures folder</param>
 		internal static bool LoadImageFromFile(Texture2D tex, string fileName)
 		{
-			//Set the Path variables
 			string pluginPath = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location);
-			string pathPluginTextures = string.Format("{0}/../Textures", pluginPath);
+			string pathTexture = string.Format("{0}/../Textures/{1}", pluginPath, fileName);
 			bool blnReturn = false;
 			try
 			{
-				//File Exists check
-				if(File.Exists(string.Format("{0}/{1}", pathPluginTextures, fileName)))
-				{
-					try
-					{
-						//Logger.Log(string.Format("[GUI] Loading: {0}/{1}", pathPluginTextures, fileName));
-						tex.LoadImage(File.ReadAllBytes(string.Format("{0}/{1}", pathPluginTextures, fileName)));
-						blnReturn = true;
-					}
-					catch(Exception ex)
-					{
-						Logger.Log(string.Format("[GUI] Failed to load the texture:{0} ({1})",
-							string.Format("{0}/{1}", pathPluginTextures, fileName), ex.Message));
-					}
-				}
-				else
-				{
-					Logger.Log(string.Format("[GUI] Cannot find texture to load:{0}",
-						string.Format("{0}/{1}", pathPluginTextures, fileName)));
-				}
+				if(!File.Exists(pathTexture))
+					throw new FileNotFoundException();
+
+				tex.LoadImage(File.ReadAllBytes(pathTexture));
+				blnReturn = true;
 			}
 			catch(Exception ex)
 			{
-				Logger.Log(string.Format("[GUI] Failed to load (are you missing a file):{0} ({1})",
-					string.Format("{0}/{1}", pathPluginTextures, fileName), ex.Message));
+				Logger.Log(string.Format("Failed to load the texture: {0} ({1})",
+					pathTexture, ex.Message), Logger.Level.Error);
 			}
+
 			return blnReturn;
 		}
 

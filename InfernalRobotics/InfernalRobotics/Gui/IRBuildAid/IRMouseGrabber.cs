@@ -1,13 +1,8 @@
-﻿using System;
-using System.Linq;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 
 using InfernalRobotics_v3.Interfaces;
-using InfernalRobotics_v3.Command;
-using InfernalRobotics_v3.Servo;
 using InfernalRobotics_v3.Utility;
-using InfernalRobotics_v3.Module;
+
 
 namespace InfernalRobotics_v3.Gui.IRBuildAid
 {

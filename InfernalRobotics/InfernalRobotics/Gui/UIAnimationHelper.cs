@@ -1,8 +1,8 @@
-﻿using UnityEngine;
+﻿using System;
 using System.Collections;
-using UnityEngine.EventSystems;
-using UnityEngine.UI;
-using System;
+
+using UnityEngine;
+
 
 namespace InfernalRobotics_v3.Gui
 {

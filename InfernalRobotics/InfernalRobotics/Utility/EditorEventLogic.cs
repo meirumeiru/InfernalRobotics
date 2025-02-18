@@ -1,9 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using UnityEngine;
+﻿using UnityEngine;
 
 using InfernalRobotics_v3.Module;
+
 
 namespace InfernalRobotics_v3.Utility
 {
@@ -496,9 +494,6 @@ namespace InfernalRobotics_v3.Utility
 			else
 			{
 				ModuleIREditorHelper m = part.symmetryCounterparts[0].GetComponent<ModuleIREditorHelper>();
-
-				if(!m)
-					Logger.Log("part not initialized", Logger.Level.Error);
 
 				m.needsVerification = true;
 				m.attachNodeUsed = selPartNode;

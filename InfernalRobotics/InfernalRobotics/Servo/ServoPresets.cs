@@ -1,8 +1,8 @@
 using System.Collections.Generic;
+
 using UnityEngine;
 
 using InfernalRobotics_v3.Interfaces;
-using InfernalRobotics_v3.Module;
 
 
 namespace InfernalRobotics_v3.Servo
@@ -65,8 +65,6 @@ namespace InfernalRobotics_v3.Servo
 			float nextPosition = Servo.PresetPositions[presetIndex];
 
 			Servo.MoveTo(nextPosition, targetSpeed);
-
-			Logger.Log("[Action] MoveToPreset, index=" + presetIndex + " currentPos = " + Servo.CommandedPosition + ", nextPosition=" + nextPosition, Logger.Level.Debug);
 		}
 
 		public void GetNearestPresets(out int floor, out int ceiling)

@@ -1,15 +1,12 @@
 ﻿using UnityEngine;
-using System.Collections;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-using System;
+
 
 namespace InfernalRobotics_v3.Gui
 {
 	public class ServoDragHandler: MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler
 	{
-		public int Id;
-
 		public Canvas mainCanvas;
 		public UnityEngine.Sprite background;
 
@@ -46,9 +43,6 @@ namespace InfernalRobotics_v3.Gui
 
 		public virtual void OnBeginDrag(PointerEventData eventData) 
 		{
-//anders machen... das drag teil kleiner gestalten oder so und das original liegen lassen oder ausblenden halt und 'ne kopie machen oder was weiss ich...
-//denn, ziehe ich's nach ganz oben, muss es ja kopiert werden
-
 			draggedItem = this.transform.parent.gameObject;
 			dropZone = draggedItem.transform.parent;
 			startingSiblingIndex = draggedItem.transform.GetSiblingIndex();
@@ -63,7 +57,7 @@ namespace InfernalRobotics_v3.Gui
 
 			var le = placeholder.AddComponent<LayoutElement>();
 			le.preferredHeight = startingHeight = GetDraggedItemHeight();
-			//le.flexibleWidth = 1;
+			// le.flexibleWidth = 1;
 
 			animationHelper = draggedItem.AddComponent<UIAnimationHelper>();
 			animationHelper.SetHeight = SetPlaceholderHeight;
@@ -100,7 +94,7 @@ namespace InfernalRobotics_v3.Gui
 			if(eventData.pointerEnter != null)
 				dropHandler = eventData.pointerEnter.GetComponent<ServoDropHandler>();
 
-			if((dropHandler != null) && (dropHandler.Id == Id))
+			if(dropHandler != null)
 			{
 				dropZone = eventData.pointerEnter.transform;
 				placeholder.transform.SetParent(dropZone,false);

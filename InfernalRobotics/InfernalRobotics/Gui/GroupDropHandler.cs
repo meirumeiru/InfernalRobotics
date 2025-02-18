@@ -1,36 +1,26 @@
 ﻿using UnityEngine;
-using System.Collections;
 using UnityEngine.EventSystems;
+
 using InfernalRobotics_v3.Command;
+
 
 namespace InfernalRobotics_v3.Gui
 {
-	/// <summary>
-	/// Handles the IR logic of group drop
-	/// </summary>
-	public class GroupDropHandler : MonoBehaviour, IDropHandler
-	{
-		public int Id;
+	// IDropHandler is not used anymore, we make calls directly from the DragHandler
 
+	public class GroupDropHandler : MonoBehaviour//, IDropHandler
+	{
+	/*
 		public void OnDrop(PointerEventData eventData)
 		{
 			var droppedObject = eventData.pointerDrag;
 			var dragHandler = droppedObject.GetComponent<GroupDragHandler>();
 
-			if(dragHandler == null)
-			{
-				Logger.Log("[GroupDropHandler] No GroupDragHandler on dropped object", Logger.Level.Debug);
-				return;
-			}
-
 			onGroupDrop(dragHandler);
-
-			Debug.Log("Group OnDrop: " + droppedObject.name);
 		}
-
+	*/
 		public void onGroupDrop(GroupDragHandler dragHandler)
 		{
-			//here the group ordering logic for persistence will go in IR
 			var groupUIControls = dragHandler.draggedItem;
 			int insertAt = dragHandler.placeholder.transform.GetSiblingIndex();
 

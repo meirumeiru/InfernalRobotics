@@ -1,11 +1,11 @@
 ﻿using System.Collections.Generic;
 
+using UnityEngine;
 using KSP.IO;
 using KSP.UI.Screens;
-using UnityEngine;
 
-using InfernalRobotics_v3.Servo;
 using InfernalRobotics_v3.Utility;
+
 
 namespace InfernalRobotics_v3.Gui
 {

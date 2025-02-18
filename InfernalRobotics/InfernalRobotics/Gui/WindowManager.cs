@@ -1,17 +1,18 @@
 using System;
 using System.Linq;
-using System.Reflection;
 using System.Collections.Generic;
+
 using UnityEngine;
 using UnityEngine.UI;
 using UnityEngine.EventSystems;
+using KSP.IO;
+using KSP.UI.Screens;
+using KSP.UI;
 
 using InfernalRobotics_v3.Command;
 using InfernalRobotics_v3.Interfaces;
 using InfernalRobotics_v3.Module;
-using KSP.IO;
-using KSP.UI.Screens;
-using KSP.UI;
+
 
 namespace InfernalRobotics_v3.Gui
 {
@@ -732,6 +733,7 @@ namespace InfernalRobotics_v3.Gui
 		private void onSelectedPart(Part p)
 		{
 			_editorPartSelectorGroup.AddControl(p.GetComponent<ModuleIRServo_v3>(), -1);
+			_editorPartSelectorGroup.ResetIndexes();
 
 			_editorPartSelectorGroup = null;
 
@@ -838,7 +840,11 @@ namespace InfernalRobotics_v3.Gui
 					if(Controller.Instance.ServoGroups.Count > 1)
 					{
 						while(g.Servos.Any())
+						{
 							((ServoGroup)g.group).RemoveControl(g.Servos.First().servo);
+
+g.Servos.First().servo.GroupName_ = ServoGroup.RemoveNameFromList(g.Servos.First().servo.GroupName_, g.Name); // FEHLER, neu
+						}
 
 						Controller.Instance.ServoGroups.Remove(g.group);
 						g = null;
@@ -1125,6 +1131,9 @@ namespace InfernalRobotics_v3.Gui
 			servoDeleteButton.onClick.AddListener(() =>
 				{
 					((ServoGroup)g.group).RemoveControl(s.servo);
+					((ServoGroup)g.group).ResetIndexes();
+
+s.GroupName_ = ServoGroup.RemoveNameFromList(s.GroupName_, g.Name); // FEHLER, neu
 
 					Invalidate();
 				});

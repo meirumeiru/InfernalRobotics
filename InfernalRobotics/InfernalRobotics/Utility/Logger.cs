@@ -12,7 +12,7 @@ namespace InfernalRobotics_v3
 			Info,
 			Verbose,
 
-			// Only for debug
+			// only for debug
 			Debug,
 			SuperVerbose
 		}

@@ -1,6 +1,7 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+
 using UnityEngine;
+
 
 namespace InfernalRobotics_v3.Gui.IRBuildAid
 {

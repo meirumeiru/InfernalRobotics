@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace InfernalRobotics_v3.Module
+﻿namespace InfernalRobotics_v3.Module
 {
 	/*
 	 * this class removes invisible debris that would exist after undocking a robotstrut
