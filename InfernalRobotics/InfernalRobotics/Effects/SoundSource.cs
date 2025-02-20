@@ -51,7 +51,7 @@ namespace InfernalRobotics_v3.Effects
 					motorSound.audio = null;
 					return false;
 				}
-				Logger.Log(string.Format("Loading sounds : {0}", soundPath));
+
 				if(!GameDatabase.Instance.ExistsAudioClip(soundPath))
 				{
 					Logger.Log("Sound file '" + soundPath + "' not found in the game database!", Logger.Level.Warning);
@@ -68,7 +68,7 @@ namespace InfernalRobotics_v3.Effects
 				motorSound.audio.loop = loop;
 				motorSound.audio.playOnAwake = false;
 				motorSound.audio.clip = GameDatabase.Instance.GetAudioClip(soundPath);
-				Logger.Log("Sound successfully loaded.");
+
 				return true;
 			}
 			catch(Exception ex)

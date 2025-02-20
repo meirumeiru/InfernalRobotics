@@ -355,16 +355,12 @@ namespace InfernalRobotics_v3.Command
 		{
 			foreach(var p in part.GetChildServos())
 				EditorAddServo(p);
-
-			Logger.Log("[ServoController] OnPartAttach finished successfully", Logger.Level.Debug);
 		}
 
 		private void OnEditorPartRemove(Part part)
 		{
 			foreach(var p in part.GetChildServos())
 				EditorRemoveServo(p);
-
-			Logger.Log("[ServoController] OnPartRemove finished successfully", Logger.Level.Debug);
 		}
 
 		public void OnEditorPartEvent(ConstructionEventType evt, Part part)
@@ -431,11 +427,7 @@ namespace InfernalRobotics_v3.Command
 
 		private void OnVesselChange(Vessel v)
 		{
-			Logger.Log(string.Format("[ServoController] vessel {0}", v.name));
-
 			RebuildServoGroupsFlight();
-
-			Logger.Log("[ServoController] OnVesselChange finished successfully", Logger.Level.Debug);
 		}
 
 		private void OnVesselWasModified(Vessel v)
@@ -445,20 +437,16 @@ namespace InfernalRobotics_v3.Command
 
 		private void OnVesselLoaded(Vessel v)
 		{
-			Logger.Log("[ServoController] OnVesselLoaded, v=" + v.GetName(), Logger.Level.Debug);
 			RebuildServoGroupsFlight();
 		}
 
 		private void OnVesselUnloaded(Vessel v)
 		{
-			Logger.Log("[ServoController] OnVesselUnloaded, v=" + v.GetName(), Logger.Level.Debug);
 			RebuildServoGroupsFlight();
 		}
 
 		private void Awake()
 		{
-			Logger.Log("[ServoController] awake, AddonName = " + this.AddonName);
-
 			GameScenes scene = HighLogic.LoadedScene;
 
 			if(HighLogic.LoadedSceneIsFlight)
@@ -483,8 +471,6 @@ namespace InfernalRobotics_v3.Command
 			{
 				ControllerInstance = null;
 			}
-
-			Logger.Log("[ServoController] awake finished successfully, AddonName = " + this.AddonName, Logger.Level.Debug);
 		}
 
 		private void FixedUpdate()
@@ -508,8 +494,6 @@ namespace InfernalRobotics_v3.Command
 
 		private void OnDestroy()
 		{
-			Logger.Log("[ServoController] destroy", Logger.Level.Debug);
-
 			GameEvents.onVesselChange.Remove(OnVesselChange);
 			GameEvents.onVesselWasModified.Remove(OnVesselWasModified);
 			GameEvents.onVesselLoaded.Remove(OnVesselLoaded);
@@ -520,8 +504,6 @@ namespace InfernalRobotics_v3.Command
 			GameEvents.onEditorPartEvent.Remove(OnEditorPartEvent);
 			GameEvents.onEditorUndo.Remove(OnEditorUnOrRedo);
 			GameEvents.onEditorRedo.Remove(OnEditorUnOrRedo);
-
-			Logger.Log("[ServoController] OnDestroy finished successfully", Logger.Level.Debug);
 		}
 
 		private static Part GetPartUnderCursor()

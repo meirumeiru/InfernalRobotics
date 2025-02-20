@@ -134,8 +134,6 @@ namespace InfernalRobotics_v3.Gui
 		{
 			LoadConfigXml();
 
-			Logger.Log("[NewGUI] awake, Mode: " + AddonName);
-
 			if(HighLogic.LoadedSceneIsFlight)
 				_mode = guiMode.Control;
 			else if(HighLogic.LoadedSceneIsEditor)
@@ -143,7 +141,6 @@ namespace InfernalRobotics_v3.Gui
 			else
 			{
 				_instance = null;
-				// actually we don't need to go further if it's not flight or editor
 				return;
 			}
 
@@ -151,16 +148,56 @@ namespace InfernalRobotics_v3.Gui
 
 			_servoGroupUIControls = new Dictionary<IServoGroup, GameObject>();
 			_servoUIControls = new HashSet<servoUIControl>(new servoUIControlComparer());
+		}
 
+		public void Start()
+		{
 			GameEvents.onGameSceneLoadRequested.Add(OnGameSceneLoadRequestedForAppLauncher);
 			GameEvents.onGUIApplicationLauncherReady.Add(AddAppLauncherButton);
 
-			Logger.Log("[GUI] Added Toolbar GameEvents Handlers", Logger.Level.Debug);
-
 			GameEvents.onShowUI.Add(OnShowUI);
 			GameEvents.onHideUI.Add(OnHideUI);
+		}
 
-			Logger.Log("[GUI] awake finished successfully", Logger.Level.Debug);
+		private void OnDestroy()
+		{
+			KeyboardLock(false);
+			SaveConfigXml();
+
+			if(_controlWindow)
+			{
+				_controlWindow.DestroyGameObject();
+				_controlWindow = null;
+				_controlWindowFader = null;
+			}
+
+			if(_editorWindow)
+			{
+				_editorWindow.DestroyGameObject();
+				_editorWindow = null;
+				_editorWindowFader = null;
+			}
+
+			if(_settingsWindow)
+			{
+				_settingsWindow.DestroyGameObject();
+				_settingsWindow = null;
+				_settingsWindowFader = null;
+			}
+
+			if(_presetsWindow)
+			{
+				_presetsWindow.DestroyGameObject();
+				_presetsWindow = null;
+				_presetsWindowFader = null;
+			}
+
+			GameEvents.onGUIApplicationLauncherReady.Remove(AddAppLauncherButton);
+			GameEvents.onGameSceneLoadRequested.Remove(OnGameSceneLoadRequestedForAppLauncher);
+			DestroyAppLauncherButton();
+
+			GameEvents.onShowUI.Remove(OnShowUI);
+			GameEvents.onHideUI.Remove(OnHideUI);
 		}
 
 		private void OnShowUI()
@@ -733,7 +770,7 @@ namespace InfernalRobotics_v3.Gui
 		private void onSelectedPart(Part p)
 		{
 			_editorPartSelectorGroup.AddControl(p.GetComponent<ModuleIRServo_v3>(), -1);
-_editorPartSelectorGroup.Refresh(true);
+			_editorPartSelectorGroup.Refresh(true);
 
 			_editorPartSelectorGroup = null;
 
@@ -966,7 +1003,7 @@ _editorPartSelectorGroup.Refresh(true);
 			servoMoveCenterHoldButton.callbackOnDown = (() => { if(!HighLogic.LoadedSceneIsEditor) s.MoveCenter(s.DefaultSpeed * g.GroupSpeedFactor); else s.EditorMoveCenter(s.DefaultSpeed * g.GroupSpeedFactor); });
 			servoMoveCenterHoldButton.callbackOnUp = (() => { if(!HighLogic.LoadedSceneIsEditor) s.Stop(); });
 		//	if(HighLogic.LoadedSceneIsEditor)
-		//		servoMoveCenterHoldButton.updateHandler = s.EditorMoveCenter;
+		//		servoMoveCenterHoldButton.updateHandler = (() => { s.EditorMoveCenter(s.DefaultSpeed * g.GroupSpeedFactor); });
 
 			var servoMoveCenterButtonTooltip = servoMoveCenterButton.AddComponent<BasicTooltip>();
 			servoMoveCenterButtonTooltip.tooltipText = "Move to default position";
@@ -1711,14 +1748,7 @@ _editorPartSelectorGroup.Refresh(true);
 			
 			if(EventSystem.current.currentSelectedGameObject != null && 
 			  (EventSystem.current.currentSelectedGameObject.GetComponent<InputField>() != null
-				|| EventSystem.current.currentSelectedGameObject.GetType() == typeof(InputField))				/*
-				(EventSystem.current.currentSelectedGameObject.name == "GroupNameInputField"
-				 || EventSystem.current.currentSelectedGameObject.name == "GroupMoveLeftKey"
-				 || EventSystem.current.currentSelectedGameObject.name == "GroupMoveRightKey"
-				 || EventSystem.current.currentSelectedGameObject.name == "ServoNameInputField"
-				 || EventSystem.current.currentSelectedGameObject.name == "ServoPositionInputField"
-				 || EventSystem.current.currentSelectedGameObject.name == "NewGroupNameInputField"
-				 || EventSystem.current.currentSelectedGameObject.name == "ServoGroupSpeedMultiplier")*/)
+				|| EventSystem.current.currentSelectedGameObject.GetType() == typeof(InputField)))
 			{
 				if(!isKeyboardLocked)
 					KeyboardLock(true); 
@@ -1775,9 +1805,9 @@ _editorPartSelectorGroup.Refresh(true);
 
 				ApplicationLauncher.Instance.AddOnHideCallback(OnHideCallback);
 			}
-			catch(Exception ex)
+			catch(Exception e)
 			{
-				Logger.Log(string.Format("[GUI AddAppLauncherButton Exception, {0}", ex.Message), Logger.Level.Error);
+				Logger.Log("AddAppLauncherButton -> " + e.Message, Logger.Level.Error);
 			}
 
 			Invalidate();
@@ -1815,53 +1845,8 @@ _editorPartSelectorGroup.Refresh(true);
 			}
 			catch(Exception e)
 			{
-				Logger.Log("[GUI] Failed unregistering AppLauncher handlers," + e.Message);
+				Logger.Log("DestroyAppLauncherButton -> " + e.Message, Logger.Level.Error);
 			}
-		}
-
-		private void OnDestroy()
-		{
-			Logger.Log("[GUI] destroy");
-
-			KeyboardLock(false);
-			SaveConfigXml();
-
-			if(_controlWindow)
-			{
-				_controlWindow.DestroyGameObject();
-				_controlWindow = null;
-				_controlWindowFader = null;
-			}
-
-			if(_editorWindow)
-			{
-				_editorWindow.DestroyGameObject();
-				_editorWindow = null;
-				_editorWindowFader = null;
-			}
-
-			if(_settingsWindow)
-			{
-				_settingsWindow.DestroyGameObject();
-				_settingsWindow = null;
-				_settingsWindowFader = null;
-			}
-
-			if(_presetsWindow)
-			{
-				_presetsWindow.DestroyGameObject();
-				_presetsWindow = null;
-				_presetsWindowFader = null;
-			}
-
-			GameEvents.onGUIApplicationLauncherReady.Remove(AddAppLauncherButton);
-			GameEvents.onGameSceneLoadRequested.Remove(OnGameSceneLoadRequestedForAppLauncher);
-			DestroyAppLauncherButton();
-
-			GameEvents.onShowUI.Remove(OnShowUI);
-			GameEvents.onHideUI.Remove(OnHideUI);
-
-			Logger.Log("[GUI] OnDestroy finished successfully", Logger.Level.Debug);
 		}
 
 		internal void KeyboardLock(Boolean apply)
@@ -1872,7 +1857,7 @@ _editorPartSelectorGroup.Refresh(true);
 				//only add a new lock if there isnt already one there
 				if(InputLockManager.GetControlLock("IRKeyboardLock") != ControlTypes.KEYBOARDINPUT)
 				{
-					Logger.Log(String.Format("[GUI] AddingLock-{0}", "IRKeyboardLock"), Logger.Level.SuperVerbose);
+					Logger.Log("AddingLock IRKeyboardLock", Logger.Level.SuperVerbose);
 
 					InputLockManager.SetControlLock(ControlTypes.KEYBOARDINPUT, "IRKeyboardLock");
 				}
@@ -1883,7 +1868,8 @@ _editorPartSelectorGroup.Refresh(true);
 				// only try and remove it if there was one there in the first place
 				if(InputLockManager.GetControlLock("IRKeyboardLock") == ControlTypes.KEYBOARDINPUT)
 				{
-					Logger.Log(String.Format("[GUI] Removing-{0}", "IRKeyboardLock"), Logger.Level.SuperVerbose);
+					Logger.Log("RemovingLock IRKeyboardLock", Logger.Level.SuperVerbose);
+
 					InputLockManager.RemoveControlLock("IRKeyboardLock");
 				}
 			}
@@ -1909,11 +1895,6 @@ _editorPartSelectorGroup.Refresh(true);
 				return newWindowPosition;
 			else
 				return Vector3.zero;
-		}
-
-		private void OnSave()
-		{
-			SaveConfigXml();
 		}
 
 		public void SaveConfigXml()
