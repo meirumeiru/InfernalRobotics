@@ -71,12 +71,12 @@ namespace InfernalRobotics_v3.Gui
 		// servos
 		internal static Dictionary<IServoGroup, GameObject> _servoGroupUIControls;
 
-		internal class servoUIControl { public IServo s; public GameObject ui; };
+		internal class servoUIControl { public IServo servo; public IServoGroup group; public GameObject ui; };
 		internal class servoUIControlComparer : IEqualityComparer<servoUIControl>
 		{
 			public bool Equals(servoUIControl l, servoUIControl r)
 			{
-				return (l.s == r.s) && (l.ui == r.ui);
+				return (l.servo == r.servo) && (l.group == r.group) && (l.ui == r.ui);
 			}
 
 			public int GetHashCode(servoUIControl e)
@@ -456,7 +456,7 @@ namespace InfernalRobotics_v3.Gui
 
 				InitFlightServoControls(newServoLine, g, Controller.Instance.GetInterceptor(s));
 
-				_servoUIControls.Add(new servoUIControl { s = Controller.Instance.GetInterceptor(s), ui = newServoLine });
+				_servoUIControls.Add(new servoUIControl { servo = Controller.Instance.GetInterceptor(s), group = g, ui = newServoLine });
 			}
 		}
 
@@ -733,7 +733,7 @@ namespace InfernalRobotics_v3.Gui
 		private void onSelectedPart(Part p)
 		{
 			_editorPartSelectorGroup.AddControl(p.GetComponent<ModuleIRServo_v3>(), -1);
-			_editorPartSelectorGroup.ResetIndexes();
+_editorPartSelectorGroup.Refresh(true);
 
 			_editorPartSelectorGroup = null;
 
@@ -841,9 +841,8 @@ namespace InfernalRobotics_v3.Gui
 					{
 						while(g.Servos.Any())
 						{
+							((ModuleIRServo_v3)g.Servos.First().servo).RemoveGroup(g.group);
 							((ServoGroup)g.group).RemoveControl(g.Servos.First().servo);
-
-g.Servos.First().servo.GroupName_ = ServoGroup.RemoveNameFromList(g.Servos.First().servo.GroupName_, g.Name); // FEHLER, neu
 						}
 
 						Controller.Instance.ServoGroups.Remove(g.group);
@@ -869,7 +868,7 @@ g.Servos.First().servo.GroupName_ = ServoGroup.RemoveNameFromList(g.Servos.First
 
 				InitEditorServoControls(newServoLine, Controller.Instance.GetInterceptor(g), Controller.Instance.GetInterceptor(s));
 
-				_servoUIControls.Add(new servoUIControl { s = Controller.Instance.GetInterceptor(s), ui = newServoLine });
+				_servoUIControls.Add(new servoUIControl { servo = Controller.Instance.GetInterceptor(s), group = g, ui = newServoLine });
 			}
 		}
 
@@ -1130,10 +1129,8 @@ g.Servos.First().servo.GroupName_ = ServoGroup.RemoveNameFromList(g.Servos.First
 			var servoDeleteButton = newServoLine.GetChild("ServoDeleteButton").GetComponent<Button>();
 			servoDeleteButton.onClick.AddListener(() =>
 				{
+					((ModuleIRServo_v3)s.servo).RemoveGroup(g.group);
 					((ServoGroup)g.group).RemoveControl(s.servo);
-					((ServoGroup)g.group).ResetIndexes();
-
-s.GroupName_ = ServoGroup.RemoveNameFromList(s.GroupName_, g.Name); // FEHLER, neu
 
 					Invalidate();
 				});
@@ -1740,7 +1737,7 @@ s.GroupName_ = ServoGroup.RemoveNameFromList(s.GroupName_, g.Name); // FEHLER, n
 				{
 					if(!pair.ui.activeInHierarchy)
 						continue;
-					UpdateServoReadoutsFlight(pair.s, pair.ui);
+					UpdateServoReadoutsFlight(pair.servo, pair.ui);
 				}
 
 				foreach(var pair in _servoGroupUIControls) 
@@ -1755,7 +1752,7 @@ s.GroupName_ = ServoGroup.RemoveNameFromList(s.GroupName_, g.Name); // FEHLER, n
 				foreach(var pair in _servoUIControls)
 				{
 					if(pair.ui.activeInHierarchy)
-						UpdateServoReadoutsEditor(pair.s, pair.ui);
+						UpdateServoReadoutsEditor(pair.servo, pair.ui);
 				}
 			}
 		}

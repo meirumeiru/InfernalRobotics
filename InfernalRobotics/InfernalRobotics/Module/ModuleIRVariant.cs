@@ -2,6 +2,7 @@
 
 using UnityEngine;
 
+
 namespace InfernalRobotics_v3.Module
 {
 	public class ModuleIRVariant : PartModule
@@ -128,12 +129,44 @@ namespace InfernalRobotics_v3.Module
 			}
         }
 
-		// we need to have our own copy of the DragCubes, otherwise we modify the ones in the partPrefab
+		// KSP solution
+	//	private void PrepareDragCubes()
+	//	{
+	//		ConfigNode databaseConfig = PartLoader.Instance.GetDatabaseConfig(part.partInfo.partPrefab, "DRAG_CUBE");
+	//		if(databaseConfig != null)
+	//			part.DragCubes.LoadCubes(databaseConfig);
+	//	}
+
+		private static void SetCubeArray(float[] outputArray, float[] inputArray)
+		{
+			for(int i = 0; i < 6; i++)
+				outputArray[i] = inputArray[i];
+		}
+
+        private static DragCube CloneCube(DragCube dragCube)
+        {
+			var c = new DragCube
+			{
+				Center = dragCube.Center,
+				Size = dragCube.Size,
+				Name = dragCube.Name,
+				Weight = dragCube.Weight
+			};
+
+			SetCubeArray(c.Area, dragCube.Area);
+			SetCubeArray(c.Drag, dragCube.Drag);
+			SetCubeArray(c.Depth, dragCube.Depth);
+			SetCubeArray(c.DragModifiers, dragCube.DragModifiers);
+
+            return c;
+        }
+
 		private void PrepareDragCubes()
 		{
-			ConfigNode databaseConfig = PartLoader.Instance.GetDatabaseConfig(part.partInfo.partPrefab, "DRAG_CUBE");
-			if(databaseConfig != null)
-				part.DragCubes.LoadCubes(databaseConfig);
+			part.DragCubes.LoadCubes(part.partInfo.partPrefab.DragCubes);
+
+			for(int i = 0; i < part.DragCubes.Cubes.Count; i++)
+				part.DragCubes.Cubes[i] = CloneCube(part.DragCubes.Cubes[i]);
 		}
 
 		private void ScaleDragCubes(float factor)

@@ -1,10 +1,9 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
+
 using UnityEngine;
 
 using InfernalRobotics_v3.Interfaces;
-using InfernalRobotics_v3.Servo;
 using InfernalRobotics_v3.Module;
 
 
@@ -62,20 +61,13 @@ namespace InfernalRobotics_v3.Command
 		public Vessel Vessel
 		{
 			get { return vessel; }
-			set { vessel = value; } // FEHLER, temp
+			set { vessel = value; }
 		}
 
 		public string Name 
 		{ 
 			get { return name; } 
-			set { 
-				if(servos != null && servos.Count > 0)
-				{
-					foreach(IServo servo in servos)
-						servo.GroupName = AddNameToList(RemoveNameFromList(servo.GroupName, name), value);
-				}
-				name = value;
-			} 
+			set { name = value; } 
 		}
 
 		public IList<IServo> Servos
@@ -101,44 +93,27 @@ namespace InfernalRobotics_v3.Command
 
 			servos.Insert(index < 0 ? servos.Count : index, servo);
 
-			servo.GroupName = AddNameToList(servo.GroupName, Name);
-
 			bDirty = true;
 		}
 
 		public void RemoveControl(IServo servo)
 		{
-			servos.Remove(servo);
-
-			servo.GroupName = RemoveNameFromList(servo.GroupName, Name);
-
-			bDirty = true;
+			if(servos.Remove(servo))
+				bDirty = true;
 		}
 
-		public static string AddNameToList(string list, string name)
+		public void Refresh(bool bReserialize)
 		{
-			string[] listNames = list.Split('|');
-			foreach(string listName in listNames)
+			for(int i = 0; i < servos.Count; i++)
 			{
-				if(listName == name)
-					return list;
+				ModuleIRServo_v3 s = (ModuleIRServo_v3)servos[i].servo;
+
+				s.RemoveGroup(this);
+				s.AddGroup(this, i);
+
+				if(bReserialize)
+					s.SerializeGroupNames();
 			}
-
-			return (list + "|" + name).Trim('|');
-		}
-
-		public static string RemoveNameFromList(string list, string name)
-		{
-			string result = "";
-
-			string[] listNames = list.Split('|');
-			foreach(string listName in listNames)
-			{
-				if(listName != name)
-					result += "|" + listName;
-			}
-
-			return result.Trim('|');
 		}
 
 		////////////////////////////////////////

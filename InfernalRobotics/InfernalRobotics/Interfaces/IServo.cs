@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
+
 using UnityEngine;
 
-using InfernalRobotics_v3.Module;
 
 namespace InfernalRobotics_v3.Interfaces
 {
@@ -32,7 +32,7 @@ namespace InfernalRobotics_v3.Interfaces
 		IPresetable Presets { get; }
 
 		// Servo's Group related implementation
-		string GroupName { get; set; }
+		List<IServoGroup> Groups { get; }
 
 		////////////////////////////////////////
 		// Status

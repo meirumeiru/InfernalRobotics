@@ -72,10 +72,9 @@ namespace InfernalRobotics_v3.Interceptors
 			get { return p; }
 		}
 
-		public string GroupName_
+		public List<IServoGroup> Groups
 		{
-			get { return s.GroupName_; }
-			set { s.GroupName_ = value; }
+			get { return s.Groups; }
 		}
 
 		////////////////////////////////////////
