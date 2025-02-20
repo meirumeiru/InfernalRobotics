@@ -2,10 +2,9 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
 
-using KSP.IO;
 using UnityEngine;
+using KSP.IO;
 
 using InfernalRobotics_v3.Command;
 using InfernalRobotics_v3.Effects;
@@ -13,7 +12,6 @@ using InfernalRobotics_v3.Interfaces;
 using InfernalRobotics_v3.Servo;
 using InfernalRobotics_v3.Utility;
 
-using InfernalRobotics_v3.Gui;
 
 namespace InfernalRobotics_v3.Module
 {
@@ -25,7 +23,7 @@ namespace InfernalRobotics_v3.Module
 	 * KSP uses the PhysicsGlobals.JointForce value as a maximum (currently 1E+20f).
 	 */
 
-	public class ModuleIRServo_v3 : PartModule, IServo, IJointLockState, IPartMassModifier, IPartCostModifier, IModuleInfo, IResourceConsumer, IConstruction
+	public class ModuleIRServo_v3 : PartModule, IServo, IJointLockState, IPartMassModifier, IPartCostModifier, IModuleInfo, IResourceConsumer, IConstruction, IAxisFieldLimits
 	{
 		static private bool constantsLoaded = false;
 
@@ -116,8 +114,10 @@ namespace InfernalRobotics_v3.Module
 			// und das verlängern? hmm... ja gut, evtl. auch eher in anderem Modul?
 			// weitere stabilityJoints bauen -> nicht an parent, sondern an andere Punkte (für multi-Rail-Idee)
 
-		// Motor (works with position relative to current zero-point of joint, like position)
+		// "Motor" (works with position relative to current zero-point of joint, like position)
 		private Interpolator ip;
+
+		// Limiter to keep movements at a specific maximum speed
 		private Interceptors.Limiter lm;
 		private ILimiter ilm;
 
@@ -141,7 +141,7 @@ namespace InfernalRobotics_v3.Module
 				else if(chunk == "Rotor")
 					availableModes.Add(ModeType.rotor);
 				else
-					Logger.Log("[servo] unknown mode " + chunk + " found for part " + part.partInfo.name, Logger.Level.Debug);
+					Logger.Log("[Servo] unknown mode " + chunk + " found for part " + part.partInfo.name, Logger.Level.Debug);
 			}
 
 			if(availableModes.Count == 0)
@@ -166,9 +166,7 @@ namespace InfernalRobotics_v3.Module
 				}
 			}
 
-			if(HighLogic.LoadedSceneIsFlight)
-				((UI_ChooseOption)Fields["modeIndex"].uiControlFlight).options = m.ToArray();
-			else
+			if(HighLogic.LoadedSceneIsEditor)
 				((UI_ChooseOption)Fields["modeIndex"].uiControlEditor).options = m.ToArray();
 		}
 
@@ -192,7 +190,7 @@ namespace InfernalRobotics_v3.Module
 				else if(chunk == "Tracking")
 					availableInputModes.Add(InputModeType.tracking);
 				else
-					Logger.Log("[servo] unknown inputmode " + chunk + " found for part " + part.partInfo.name, Logger.Level.Debug);
+					Logger.Log("[Servo] unknown inputmode " + chunk + " found for part " + part.partInfo.name, Logger.Level.Debug);
 			}
 
 			if(availableInputModes.Count == 0)
@@ -255,6 +253,16 @@ namespace InfernalRobotics_v3.Module
 		////////////////////////////////////////
 		// Data (servo)
 
+		// Groups
+		[KSPField(isPersistant = true)]
+		public string groupName = "Default Group";
+
+		public void SerializeGroupNames()
+		{
+			if(GroupPositions != null) // only for security -> otherwise KSP will crash
+				groupName = GroupPositions.Aggregate(string.Empty, (current, s) => current + (s.group.Name + ";" + s.index + "|")).Trim('|');
+		}
+
 		// Presets
 		[KSPField(isPersistant = true)]
 		public string presetsS = "";
@@ -271,7 +279,7 @@ namespace InfernalRobotics_v3.Module
 			}
 		}
 
-		private void SerializePresets()
+		private void SerializePresetPositions()
 		{
 			if(PresetPositions != null) // only for security -> otherwise KSP will crash
 				presetsS = PresetPositions.Aggregate(string.Empty, (current, s) => current + (s + "|")).Trim('|');
@@ -309,6 +317,8 @@ namespace InfernalRobotics_v3.Module
 				ilm = lm;
 
 				presets = new ServoPresets(this);
+	
+				GroupPositions = new List<GroupPosition>();
 			}
 		}
 
@@ -322,7 +332,9 @@ namespace InfernalRobotics_v3.Module
 
 		public override void OnAwake()
 		{
+#if DEBUG
 			DebugInit();
+#endif
 
 			isInitialized = false;
 
@@ -430,6 +442,15 @@ namespace InfernalRobotics_v3.Module
 				}
 			}
 
+			axisFieldLimits = new DictionaryValueList<string, AxisFieldLimit>();
+
+			axisFieldLimits.Add("requestedPosition", new AxisFieldLimit
+			{
+				limitedField = (BaseAxisField)Fields["requestedPosition"],
+				softLimits = hasPositionLimit ? new Vector2(MinPositionLimit, MaxPositionLimit) : new Vector2(MinPosition, MaxPosition),
+				hardLimits = new Vector2(MinPosition, MaxPosition)
+			});
+
 			AttachContextMenu();
 
 			UpdateUI();
@@ -487,21 +508,21 @@ namespace InfernalRobotics_v3.Module
 
 		public override void OnSave(ConfigNode config)
 		{
-			ModuleIRController.OnSave(config, part);
-
 			base.OnSave(config);
 
-			SerializePresets();
+			ModuleIRController.OnSave(config, part);
+
+			SerializePresetPositions();
 		}
 
 		public override void OnLoad(ConfigNode config)
 		{
-			ModuleIRController.OnLoad(config, part);
-
 			base.OnLoad(config);
 
+			ModuleIRController.OnLoad(config, part);
+
 			if((part.partInfo != null) && (part.partInfo.partPrefab != null))
-				OnRescale(new ScalingFactor(scalingFactor));
+				OnRescale(scalingFactor);
 		}
 
 		public void OnVesselGoOnRails(Vessel v)
@@ -1037,6 +1058,8 @@ namespace InfernalRobotics_v3.Module
 			}
 		}
 
+static bool tryInitCorrection = true;
+
 		private void Initialize1()
 		{
 			InitializeValues();
@@ -1062,6 +1085,13 @@ namespace InfernalRobotics_v3.Module
 				else
 					correction_1 += (commandedPosition + lockPosition);
 			}
+// FEHLER, mal versuchen die Werte in Grenzen zu halten?
+if(tryInitCorrection) {
+while(correction_0 > 360f) correction_0 -= 360f;
+while(correction_0 < -360f) correction_0 += 360f;
+while(correction_1 > 360f) correction_1 -= 360f;
+while(correction_1 < -360f) correction_1 += 360f;
+}
 			commandedPosition = -lockPosition;
 
 
@@ -2050,7 +2080,7 @@ namespace InfernalRobotics_v3.Module
 		private void onChanged_servoName(object o)
 		{
 			for(int i = 0; i < part.symmetryCounterparts.Count; i++)
-				part.symmetryCounterparts[i].GetComponent<ModuleIRServo_v3>().Name = servoName;
+				part.symmetryCounterparts[i].GetComponent<ModuleIRServo_v3>().servoName = servoName;
 		}
 
 		public string Name
@@ -2085,21 +2115,6 @@ namespace InfernalRobotics_v3.Module
 		public IPresetable Presets
 		{
 			get { return presets; }
-		}
-
-		[KSPField(isPersistant = true)]
-		public string groupName = "Default Group";
-
-		private void onChanged_groupName(object o)
-		{
-			for(int i = 0; i < part.symmetryCounterparts.Count; i++)
-				part.symmetryCounterparts[i].GetComponent<ModuleIRServo_v3>().GroupName = groupName;
-		}
-
-		public string GroupName
-		{
-			get { return groupName; }
-			set { if(object.Equals(groupName, value)) return; groupName = value; onChanged_groupName(null); }
 		}
 
 		////////////////////////////////////////
@@ -2161,7 +2176,7 @@ namespace InfernalRobotics_v3.Module
 		public ModeType mode = ModeType.servo;
 
 		[KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Mode"),
-			UI_ChooseOption(suppressEditorShipModified = true, affectSymCounterparts = UI_Scene.All)]
+			UI_ChooseOption(suppressEditorShipModified = true, scene = UI_Scene.Editor)]
 		public int modeIndex = 0;
 
 		private void onChanged_modeIndex(object o)
@@ -2293,15 +2308,7 @@ namespace InfernalRobotics_v3.Module
 		public bool IsLocked
 		{
 			get { return isLocked; }
-			set
-			{
-				if(object.Equals(isLocked, value))
-					return;
-
-				isLocked = value;
-
-				onChanged_isLocked(null);
-			}
+			set { if(object.Equals(isLocked, value)) return; isLocked = value; onChanged_isLocked(null); }
 		}
 
 		[KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Invert Direction"),
@@ -2325,6 +2332,57 @@ namespace InfernalRobotics_v3.Module
 		{
 			get { return isInverted; }
 			set { if(object.Equals(isInverted, value)) return; isInverted = value; onChanged_isInverted(null); }
+		}
+
+		internal struct GroupPosition
+		{
+			public IServoGroup group;
+			public int index;
+		};
+
+		internal List<GroupPosition> GroupPositions
+		{
+			get;
+			set;
+		}
+
+		internal void AddGroup(IServoGroup group, int index)
+		{
+			GroupPosition m = new GroupPosition();
+			m.group = group; m.index = index;
+
+			GroupPositions.Add(m);
+
+			for(int i = 0; i < part.symmetryCounterparts.Count; i++)
+				part.symmetryCounterparts[i].GetComponent<ModuleIRServo_v3>().GroupPositions = new List<GroupPosition>(GroupPositions);
+		}
+
+		internal void RemoveGroup(IServoGroup group)
+		{
+			for(int i = 0; i < GroupPositions.Count; i++)
+			{
+				if(GroupPositions[i].group == group)
+				{ GroupPositions.RemoveAt(i--); break; }
+			}
+
+			for(int i = 0; i < part.symmetryCounterparts.Count; i++)
+				part.symmetryCounterparts[i].GetComponent<ModuleIRServo_v3>().GroupPositions = new List<GroupPosition>(GroupPositions);
+		}
+
+		public List<IServoGroup> Groups
+		{
+			get
+			{
+				List<IServoGroup> l = new List<IServoGroup>(GroupPositions.Count);
+
+				foreach(GroupPosition gmd in GroupPositions)
+				{
+					if(!l.Contains(gmd.group))
+						l.Add(gmd.group);
+				}
+
+				return l;
+			}
 		}
 
 		////////////////////////////////////////
@@ -2494,9 +2552,8 @@ namespace InfernalRobotics_v3.Module
 			}
 		}
 
-		[KSPAxisField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Spring Force", guiFormat = "F1",
-			axisMode = KSPAxisMode.Incremental, minValue = 0f),
-			UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, suppressEditorShipModified = true, scene = UI_Scene.Editor, affectSymCounterparts = UI_Scene.All)]
+		[KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Spring Force", guiFormat = "F1"),
+			UI_FloatRange(minValue = 0f, stepIncrement = 0.1f, suppressEditorShipModified = true, scene = UI_Scene.Editor)]
 		public float jointSpring = PhysicsGlobals.JointForce;
 
 		private void onChanged_jointSpring(object o)
@@ -2511,9 +2568,8 @@ namespace InfernalRobotics_v3.Module
 			set { if(object.Equals(jointSpring, value)) return; jointSpring = value; onChanged_jointSpring(null); }
 		}
 
-		[KSPAxisField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Damping Force", guiFormat = "F1",
-			axisMode = KSPAxisMode.Incremental, minValue = 0f),
-			UI_FloatRange(minValue = 0f, maxValue = 100f, stepIncrement = 0.1f, suppressEditorShipModified = true, scene = UI_Scene.Editor, affectSymCounterparts = UI_Scene.All)]
+		[KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Damping Force", guiFormat = "F1"),
+			UI_FloatRange(minValue = 0f, maxValue = 100f, stepIncrement = 0.1f, suppressEditorShipModified = true, scene = UI_Scene.Editor)]
 		public float jointDamping = 5f;
 
 		private void onChanged_jointDamping(object o)
@@ -2538,9 +2594,8 @@ namespace InfernalRobotics_v3.Module
 		[KSPField(isPersistant = false, guiActive = false, guiActiveEditor = true, guiName = "Max Power Consumption", guiFormat = "F1", guiUnits = "mu/s")]
 		private float MaxPowerDrawRate;
 
-		[KSPAxisField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Motor Size", guiFormat = "0", guiUnits = "%",
-			axisMode = KSPAxisMode.Incremental, minValue = 20f, maxValue = 100f, incrementalSpeed = 1f),
-			UI_FloatRange(minValue = 20f, maxValue = 100f, stepIncrement = 0.1f, suppressEditorShipModified = true, affectSymCounterparts = UI_Scene.All)]
+		[KSPField(isPersistant = true, guiActive = false, guiActiveEditor = true, guiName = "Motor Size", guiFormat = "0", guiUnits = "%"),
+			UI_FloatRange(minValue = 20f, maxValue = 100f, stepIncrement = 0.1f, suppressEditorShipModified = true, scene = UI_Scene.Editor)]
 		public float motorSizeFactor = 100f;
 
 		private void onChanged_motorSizeFactor(object o)
@@ -2597,6 +2652,11 @@ namespace InfernalRobotics_v3.Module
 
 			if(Joint)
 				InitializeLimits();
+
+			axisFieldLimits["requestedPosition"].softLimits = hasPositionLimit ? new Vector2(MinPositionLimit, MaxPositionLimit) : new Vector2(MinPosition, MaxPosition);
+
+			if(LimitsChanged != null)
+				LimitsChanged(axisFieldLimits["requestedPosition"]);
 
 			UpdateUI();
 		}
@@ -2667,6 +2727,14 @@ namespace InfernalRobotics_v3.Module
 				if(Joint)
 					InitializeLimits();
 
+				if(axisFieldLimits != null)
+				{
+					axisFieldLimits["requestedPosition"].softLimits = hasPositionLimit ? new Vector2(MinPositionLimit, MaxPositionLimit) : new Vector2(MinPosition, MaxPosition);
+
+					if(LimitsChanged != null)
+						LimitsChanged(axisFieldLimits["requestedPosition"]);
+				}
+
 				for(int i = 0; i < part.symmetryCounterparts.Count; i++)
 					part.symmetryCounterparts[i].GetComponent<ModuleIRServo_v3>().MinPositionLimit = MinPositionLimit;
 			}
@@ -2717,8 +2785,29 @@ namespace InfernalRobotics_v3.Module
 				if(Joint)
 					InitializeLimits();
 
+				if(axisFieldLimits != null)
+				{
+					axisFieldLimits["requestedPosition"].softLimits = hasPositionLimit ? new Vector2(MinPositionLimit, MaxPositionLimit) : new Vector2(MinPosition, MaxPosition);
+
+					if(LimitsChanged != null)
+						LimitsChanged(axisFieldLimits["requestedPosition"]);
+				}
+
 				for(int i = 0; i < part.symmetryCounterparts.Count; i++)
 					part.symmetryCounterparts[i].GetComponent<ModuleIRServo_v3>().MaxPositionLimit = MaxPositionLimit;
+			}
+		}
+
+		// inverse/forward kinematics limiter
+		public void RegisterLimiter(ILimiter _ilm)
+		{
+			if(_ilm != null)
+				ilm = _ilm;
+			else
+			{
+				ilm = lm;
+
+				ip.maxAcceleration = accelerationLimit * factorAcceleration;
 			}
 		}
 
@@ -3179,8 +3268,8 @@ namespace InfernalRobotics_v3.Module
 				LinkedInputParts[i].MoveExecute(deltaPosition, targetSpeed);
 		}
 
-		// FEHLER, temp, Idee für IK, daher auch kein Symmetry/Link
-		public void PrecisionMove(float deltaPosition, float targetSpeed, float _acceleration)
+		// special function for inverse kinematics modules
+		public void PrecisionMove(float deltaPosition, float targetSpeed, float acceleration)
 		{
 			if(isOnRails || isLocked || isFreeMoving)
 				return;
@@ -3193,23 +3282,16 @@ namespace InfernalRobotics_v3.Module
 
 			float targetPosition = commandedPosition + deltaPosition;
 
-			ip.maxAcceleration = _acceleration * factorAcceleration;
-			ip.SetCommand(targetPosition, Mathf.Clamp(targetSpeed, 0.001f, speedLimit) * factorSpeed);
+if(ip.isModulo) // FEHLER, neue Idee, mal sehen wo der Fehler noch liegt
+{
+while(targetPosition > 360f) targetPosition -= 360f;
+while(targetPosition < -360f) targetPosition += 360f;
+}
+
+			ip.maxAcceleration = acceleration * factorAcceleration;
+			ip.SetCommand(targetPosition, Mathf.Clamp(targetSpeed, 0.005f, speedLimit) * factorSpeed);
 
 			requestedPositionIsDefined = false;
-		}
-
-		// FEHLER, temp, Idee für IK, daher auch kein Symmetry/Link
-		public void RegisterLimiter(ILimiter _ilm)
-		{
-			if(_ilm != null)
-				ilm = _ilm;
-			else
-			{
-				ilm = lm;
-
-				ip.maxAcceleration = accelerationLimit * factorAcceleration;
-			}
 		}
 
 		private void TrackMove()
@@ -3251,21 +3333,32 @@ namespace InfernalRobotics_v3.Module
 			if(isInverted)
 				deltaPosition = -deltaPosition;
 
+if(ip.isModulo && !float.IsNaN(deltaPosition) && !float.IsInfinity(deltaPosition)) // FEHLER, neue Idee, mal sehen wo der Fehler noch liegt
+{
+	while(deltaPosition > 360f) deltaPosition -= 360f;
+	while(deltaPosition < -360f) deltaPosition += 360f;
+
+	if(deltaPosition > 180f)
+					deltaPosition = 360f - deltaPosition;
+	else if(deltaPosition < -180f)
+					deltaPosition = -360f - deltaPosition;
+}
+
 			float targetPosition = commandedPosition + deltaPosition;
+
+if(ip.isModulo && !float.IsNaN(targetPosition) && !float.IsInfinity(targetPosition)) // FEHLER, neue Idee, mal sehen wo der Fehler noch liegt
+{
+while(targetPosition > 360f) targetPosition -= 360f;
+while(targetPosition < -360f) targetPosition += 360f;
+}
 
 			float _targetSpeed = Mathf.Clamp(targetSpeed, 0.1f, speedLimit);
 			float _acceleration = accelerationLimit;
 
-			if(!ilm.SetCommand(ref targetPosition, ref _targetSpeed, ref _acceleration))
-			{
-				ip.maxAcceleration = accelerationLimit * factorAcceleration;
-				ip.SetCommand(targetPosition, _targetSpeed * factorSpeed);
-			}
-			else
-			{
-				ip.maxAcceleration = _acceleration * factorAcceleration;
-				ip.SetCommand(targetPosition, _targetSpeed * factorSpeed);
-			}
+			ilm.SetCommand(ref targetPosition, ref _targetSpeed, ref _acceleration);
+
+			ip.maxAcceleration = _acceleration * factorAcceleration;
+			ip.SetCommand(targetPosition, _targetSpeed * factorSpeed);
 
 			requestedPositionIsDefined = false;
 		}
@@ -3322,19 +3415,24 @@ namespace InfernalRobotics_v3.Module
 			else
 				targetPosition = (swap ? 1.0f : -1.0f) * (targetPosition - zeroInvert + correction_1 - correction_0);
 
+if(ip.isModulo) // FEHLER, neue Idee, mal sehen wo der Fehler noch liegt
+{
+while(targetPosition > 360f) targetPosition -= 360f;
+while(targetPosition < -360f) targetPosition += 360f;
+
+if(targetPosition - position > 180f)
+					targetPosition = 360f - targetPosition;
+if(targetPosition - position < -180f)
+					targetPosition = -360f - targetPosition;
+}
+
 			float _targetSpeed = Mathf.Clamp(targetSpeed, 0.1f, speedLimit);
 			float _acceleration = accelerationLimit;
 
-			if(!ilm.SetCommand(ref targetPosition, ref _targetSpeed, ref _acceleration))
-			{
-				ip.maxAcceleration = accelerationLimit * factorAcceleration;
-				ip.SetCommand(targetPosition, _targetSpeed * factorSpeed);
-			}
-			else
-			{
-				ip.maxAcceleration = _acceleration * factorAcceleration;
-				ip.SetCommand(targetPosition, _targetSpeed * factorSpeed);
-			}
+			ilm.SetCommand(ref targetPosition, ref _targetSpeed, ref _acceleration);
+
+			ip.maxAcceleration = _acceleration * factorAcceleration;
+			ip.SetCommand(targetPosition, _targetSpeed * factorSpeed);
 
 			requestedPositionIsDefined = true;
 		}
@@ -3410,7 +3508,7 @@ namespace InfernalRobotics_v3.Module
 		// Input (rotor)
 
 		[KSPField(isPersistant = false, guiActive = true, guiActiveEditor = false, guiName = "Motor"),
-			UI_Toggle(enabledText = "Engaged", disabledText = "Disengaged", suppressEditorShipModified = true, affectSymCounterparts = UI_Scene.All)]
+			UI_Toggle(enabledText = "Engaged", disabledText = "Disengaged", suppressEditorShipModified = true, scene = UI_Scene.Flight, affectSymCounterparts = UI_Scene.Flight)]
 		private bool isRunning = false;
 
 		private void onChanged_isRunning(object o)
@@ -3776,7 +3874,8 @@ namespace InfernalRobotics_v3.Module
 			Fields["isInverted"].OnValueModified += onChanged_isInverted;
 
 			Fields["isLocked"].OnValueModified += onChanged_isLocked;
-			Fields["modeIndex"].OnValueModified += onChanged_modeIndex;
+			if(HighLogic.LoadedSceneIsEditor)
+				Fields["modeIndex"].OnValueModified += onChanged_modeIndex;
 			Fields["inputModeIndex"].OnValueModified += onChanged_inputModeIndex;
 
 			Fields["hasPositionLimit"].OnValueModified += onChanged_hasPositionLimit;
@@ -3807,7 +3906,8 @@ namespace InfernalRobotics_v3.Module
 			Fields["isInverted"].OnValueModified -= onChanged_isInverted;
 
 			Fields["isLocked"].OnValueModified -= onChanged_isLocked;
-			Fields["modeIndex"].OnValueModified -= onChanged_modeIndex;
+			if(HighLogic.LoadedSceneIsEditor)
+				Fields["modeIndex"].OnValueModified -= onChanged_modeIndex;
 			Fields["inputModeIndex"].OnValueModified -= onChanged_inputModeIndex;
 
 			Fields["hasPositionLimit"].OnValueModified -= onChanged_hasPositionLimit;
@@ -4273,17 +4373,10 @@ namespace InfernalRobotics_v3.Module
 		[KSPField(isPersistant = false), SerializeField]
 		private float scaleElectricChargeRequired = 2.0f;
 
-		// Tweakscale support
-		[KSPEvent(guiActive = false, active = true)]
-		void OnPartScaleChanged(BaseEventDetails data)
+		public void OnRescale(float rescalingFactor)
 		{
-			OnRescale(new ScalingFactor(data.Get<float>("factorAbsolute")));
-		}
-
-		public void OnRescale(ScalingFactor factor)
-		{
-			float _abs = factor.absolute.linear;
-			float _rel = factor.absolute.linear / scalingFactor;
+			float _abs = rescalingFactor;
+			float _rel = rescalingFactor / scalingFactor;
 
 			ModuleIRServo_v3 prefab = part.partInfo.partPrefab.GetComponent<ModuleIRServo_v3>();
 
@@ -4325,7 +4418,7 @@ if(fixedMeshTransform != null)
 				}
 			}
 
-			scalingFactor = factor.absolute.linear;
+			scalingFactor = rescalingFactor;
 
 			UpdateMaxPowerDrawRate();
 
@@ -4468,6 +4561,82 @@ if(fixedMeshTransform != null)
 		}
 
 		////////////////////////////////////////
+		// IAxisFieldLimits
+
+		private DictionaryValueList<string, AxisFieldLimit> axisFieldLimits;
+
+		public Callback<AxisFieldLimit> LimitsChanged { get; set; }
+
+		public bool HasAxisFieldLimits()
+		{
+			if(axisFieldLimits == null)
+				return false;
+			return axisFieldLimits.Count > 0;
+		}
+
+		public bool HasAxisFieldLimit(string fieldName)
+		{
+			if((axisFieldLimits == null) || (axisFieldLimits.Count == 0))
+				return false;
+			return axisFieldLimits.ContainsKey(fieldName);
+		}
+
+		public List<AxisFieldLimit> GetAxisFieldLimits()
+		{
+			if(axisFieldLimits == null)
+				return null;
+			return axisFieldLimits.Values.ToList();
+		}
+
+		public AxisFieldLimit GetAxisFieldLimit(string fieldName)
+		{
+			if((axisFieldLimits == null) || !axisFieldLimits.ContainsKey(fieldName))
+				return null;
+
+			return axisFieldLimits[fieldName];
+		}
+
+		public Vector2 GetHardLimits(string fieldName)
+		{
+			if((axisFieldLimits == null) || !axisFieldLimits.ContainsKey(fieldName))
+				return Vector2.one;
+
+			return axisFieldLimits[fieldName].hardLimits;
+		}
+
+		public Vector2 GetSoftLimits(string fieldName)
+		{
+			if((axisFieldLimits == null) || !axisFieldLimits.ContainsKey(fieldName))
+				return Vector2.one;
+
+			return axisFieldLimits[fieldName].softLimits;
+		}
+
+		public void SetHardLimits(string fieldName, Vector2 newLimits)
+		{} // cannot be changed
+
+		public void SetSoftLimits(string fieldName, Vector2 newLimits)
+		{
+			if((axisFieldLimits != null) && axisFieldLimits.ContainsKey(fieldName))
+			{
+				MinPositionLimit = newLimits.x;
+				MaxPositionLimit = newLimits.y;
+
+				bool newHasPositionLimits = ((MinPosition != MinPositionLimit) || (MaxPosition != MaxPositionLimit));
+
+				if(hasPositionLimit != newHasPositionLimits)
+					IsLimitted = newHasPositionLimits;
+				else
+				{
+					axisFieldLimits[fieldName].softLimits = new Vector2(MinPositionLimit, MaxPositionLimit);
+
+					if(LimitsChanged != null)
+						LimitsChanged(axisFieldLimits["requestedPosition"]);
+				}
+			}
+		}
+
+		////////////////////////////////////////
 		// Ferram Aerospace Research
 
 		private int _far_counter = 60;
@@ -4492,6 +4661,8 @@ if(fixedMeshTransform != null)
 
 		////////////////////////////////////////
 		// Debug
+
+#if DEBUG
 
 		private MultiLineDrawer ld;
 
@@ -4573,6 +4744,9 @@ if(fixedMeshTransform != null)
 			DrawAxis(idx + 2, Joint.transform,
 				v, false, Joint.transform.TransformDirection(Joint.axis) * 0.2f);
 		}
+
+#endif
+
 	}
 }
 
