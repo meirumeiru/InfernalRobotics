@@ -229,7 +229,13 @@ namespace InfernalRobotics_v3.Gui
 				{
 					GameObject parent = pair.Value.GetChild("ServoGroupControlsHLG");
 
-					EnableElement(parent, "ServoGroupSpeedMultiplier", enabled);
+					{
+						GameObject obj = parent.GetChild("ServoGroupSpeedMultiplier");
+
+						Selectable text = obj.GetComponent<Selectable>();
+						text.enabled = enabled;
+						text.interactable = enabled;
+					}
 					EnableElement(parent, "ServoGroupMoveLeftToggleButton", enabled);
 					EnableElement(parent, "ServoGroupMoveLeftButton", enabled);
 					EnableElement(parent, "ServoGroupMoveCenterButton", enabled);
