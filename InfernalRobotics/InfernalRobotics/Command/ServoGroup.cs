@@ -12,44 +12,47 @@ namespace InfernalRobotics_v3.Command
 	public class ServoGroup : IServoGroup
 	{
 		private Vessel vessel;
-		private string name;
 		private List<IServo> servos;
+
+		public class Settings
+		{
+			public string name;
+			public string forwardKey;
+			public string reverseKey;
+			public float groupSpeedFactor;
+		};
+
+		public Settings settings;
 
 		private bool bDirty;
 
-		private string forwardKey;
-		private string reverseKey;
-		private float groupSpeedFactor;
-
 		private float totalElectricChargeRequirement;
 
-		public ServoGroup(IServo servo, Vessel v, string name)
-			: this(servo, name)
+		public ServoGroup(IServo servo, Vessel v, Settings s)
+			: this(servo, s)
 		{
 			vessel = v;
 		}
 
-		public ServoGroup(Vessel v, string name)
-			: this(name)
+		public ServoGroup(Vessel v, Settings s)
+			: this(s)
 		{
 			vessel = v;
 		}
 
-		public ServoGroup(IServo servo, string name)
-			: this(name)
+		public ServoGroup(IServo servo, Settings s)
+			: this(s)
 		{
 			servos.Add(servo);
 		}
 
-		public ServoGroup(string name)
+		public ServoGroup(Settings s)
 		{
 			servos = new List<IServo>();
 
+			settings = s;
+
 			Expanded = false;
-			Name = name;
-			ForwardKey = "";
-			ReverseKey = "";
-			GroupSpeedFactor = 1;
 			bDirty = true;
 		}
 
@@ -66,8 +69,8 @@ namespace InfernalRobotics_v3.Command
 
 		public string Name 
 		{ 
-			get { return name; } 
-			set { name = value; } 
+			get { return settings.name; } 
+			set { settings.name = value; } 
 		}
 
 		public IList<IServo> Servos
@@ -135,28 +138,28 @@ namespace InfernalRobotics_v3.Command
 
 		public float GroupSpeedFactor
 		{
-			get { return groupSpeedFactor; }
+			get { return settings.groupSpeedFactor; }
 			set
 			{
-				groupSpeedFactor = value;
+				settings.groupSpeedFactor = value;
 			}
 		}
 
 		public string ForwardKey
 		{
-			get { return forwardKey; }
+			get { return settings.forwardKey; }
 			set
 			{
-				forwardKey = value;
+				settings.forwardKey = value;
 			}
 		}
 
 		public string ReverseKey
 		{
-			get { return reverseKey; }
+			get { return settings.reverseKey; }
 			set
 			{
-				reverseKey = value;
+				settings.reverseKey = value;
 			}
 		}
 
@@ -179,11 +182,11 @@ namespace InfernalRobotics_v3.Command
 
 		public void CheckInputs()
 		{
-			if(KeyPressed(forwardKey))
+			if(KeyPressed(settings.forwardKey))
 				MoveRight();
-			else if(KeyPressed(reverseKey))
+			else if(KeyPressed(settings.reverseKey))
 				MoveLeft();
-			else if(KeyUnPressed(forwardKey) || KeyUnPressed(reverseKey))
+			else if(KeyUnPressed(settings.forwardKey) || KeyUnPressed(settings.reverseKey))
 				Stop();
 		}
 

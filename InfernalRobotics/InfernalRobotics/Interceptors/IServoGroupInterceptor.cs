@@ -33,7 +33,7 @@ namespace InfernalRobotics_v3.Interceptors
 
 		private bool IsControllable()
 		{
-			return HighLogic.LoadedSceneIsEditor || (g.Vessel.CurrentControlLevel >= Vessel.ControlLevel.PARTIAL_MANNED);
+			return HighLogic.LoadedSceneIsEditor || (g.Vessel.CurrentControlLevel > Vessel.ControlLevel.NONE);
 		}
 
 		////////////////////////////////////////

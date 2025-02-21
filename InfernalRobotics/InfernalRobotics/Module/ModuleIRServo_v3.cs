@@ -4354,7 +4354,7 @@ if(targetPosition - position < -180f)
 			}
 		}
 
-		[KSPField(isPersistant = true, advancedTweakable = true, guiActive = true, guiActiveEditor = true, guiName = "IR Same Vessel Interaction"),
+		[KSPField(isPersistant = true, advancedTweakable = true, guiActive = true, guiActiveEditor = true, guiActiveUnfocused = true, guiName = "IR Same Vessel Interaction"),
 			UI_Toggle(enabledText = "Yes", disabledText = "No")]
 		public bool activateCollisions = false;
 

@@ -157,6 +157,8 @@ namespace InfernalRobotics_v3.Gui
 
 			GameEvents.onShowUI.Add(OnShowUI);
 			GameEvents.onHideUI.Add(OnHideUI);
+
+			GameEvents.onVesselControlStateChange.Add(OnChangeControllable);
 		}
 
 		private void OnDestroy()
@@ -198,6 +200,8 @@ namespace InfernalRobotics_v3.Gui
 
 			GameEvents.onShowUI.Remove(OnShowUI);
 			GameEvents.onHideUI.Remove(OnHideUI);
+
+			GameEvents.onVesselControlStateChange.Remove(OnChangeControllable);
 		}
 
 		private void OnShowUI()
@@ -213,6 +217,54 @@ namespace InfernalRobotics_v3.Gui
 		{
 			if(GUIHidden = GUIEnabled)
 				HideIRWindow();
+		}
+
+		private void OnChangeControllable(Vessel v, bool controllable)
+		{
+			bool enabled = (v.CurrentControlLevel > Vessel.ControlLevel.NONE);
+
+			foreach(var pair in _servoGroupUIControls)
+			{
+				if(pair.Key.Vessel == v)
+				{
+					GameObject parent = pair.Value.GetChild("ServoGroupControlsHLG");
+
+					EnableElement(parent, "ServoGroupSpeedMultiplier", enabled);
+					EnableElement(parent, "ServoGroupMoveLeftToggleButton", enabled);
+					EnableElement(parent, "ServoGroupMoveLeftButton", enabled);
+					EnableElement(parent, "ServoGroupMoveCenterButton", enabled);
+					EnableElement(parent, "ServoGroupMoveRightButton", enabled);
+					EnableElement(parent, "ServoGroupMoveRightToggleButton", enabled);
+					EnableElement(parent, "ServoGroupMovePrevPresetButton", enabled);
+					EnableElement(parent, "ServoGroupRevertButton", enabled);
+					EnableElement(parent, "ServoGroupMoveNextPresetButton", enabled);
+					EnableElement(parent, "IKLimiterButton", enabled);
+					EnableElement(parent, "IKDirectModeButton", enabled);
+					EnableElement(parent, "IKRelaxButton", enabled);
+					EnableElement(parent, "IKEndEffectorButton", enabled);
+					EnableElement(parent, "IKPositionVisibleButton", enabled);
+					EnableElement(parent, "IKAction1Button", enabled);
+					EnableElement(parent, "IKAction2Button", enabled);
+					EnableElement(parent, "IKModeToggleButton", enabled);
+				}
+			}
+
+			foreach(var pair in _servoUIControls)
+			{
+				if(pair.servo.HostPart.vessel == v)
+				{
+					GameObject parent = pair.ui;
+
+					EnableElement(parent, "ServoLockToggleButton", enabled);
+					EnableElement(parent, "ServoMoveLeftButton", enabled);
+					EnableElement(parent, "ServoMoveCenterButton", enabled);
+					EnableElement(parent, "ServoMoveRightButton", enabled);
+					EnableElement(parent, "ServoInvertAxisToggleButton", enabled);
+					EnableElement(parent, "ServoMovePrevPresetButton", enabled);
+					EnableElement(parent, "ServoOpenPresetsToggle", enabled);
+					EnableElement(parent, "ServoMoveNextPresetButton", enabled);
+				}
+			}
 		}
 
 		private void SetGlobalAlpha(float newAlpha)
@@ -256,6 +308,23 @@ namespace InfernalRobotics_v3.Gui
 				_presetsWindow.transform.localScale = Vector3.one * newScale;
 
 			_UIScaleValue = newScale;
+		}
+
+		private void EnableElement(GameObject parent, string name, bool enabled)
+		{
+			GameObject obj = parent.GetChild(name);
+
+			Selectable button = obj.GetComponent<Selectable>();
+			button.enabled = enabled;
+			button.interactable = enabled;
+
+			Color c = Color.white; c.a = enabled ? 1.0f : 0.35f;
+
+			obj.GetComponent<Image>().color = c;
+			obj.GetChild("Icon").GetComponent<RawImage>().color = c;
+
+			GameObject bg = obj.GetChild("OnBG");
+			if(bg) bg.SetActive(enabled);
 		}
 
 		////////////////////////////////////////
@@ -466,17 +535,21 @@ namespace InfernalRobotics_v3.Gui
 				{
 					if(v)
 					{
-						ToggleIKMode(g.group, true);
-						Controller._IKServoGroup = g.group;
-						UpdateIKButtons();
-						Controller._IKModule.SelectActiveGroup(g.group);
+						if(Controller._IKModule.SelectActiveGroup(g.group))
+						{
+							ToggleIKMode(g.group, true);
+							Controller._IKServoGroup = g.group;
+							UpdateIKButtons();
+						}
+						else
+							ikModeToggleToggle.isOn = false;
 					}
 					else
 					{
+						Controller._IKModule.SelectActiveGroup(null);
 						ToggleIKMode(g.group, false);
 						Controller._IKServoGroup = null;
 						UpdateIKButtons();
-						Controller._IKModule.SelectActiveGroup(null);
 					}
 				});
 
@@ -701,8 +774,8 @@ namespace InfernalRobotics_v3.Gui
 
 					var g =
 						HighLogic.LoadedSceneIsFlight
-						? new ServoGroup(Controller.Instance.ServoGroups[0].Vessel, newGroupName)
-						: new ServoGroup(newGroupName);
+						? new ServoGroup(Controller.Instance.ServoGroups[0].Vessel, Controller.Instance.FindOrCreateServoGroupSettings(newGroupName))
+						: new ServoGroup(Controller.Instance.FindOrCreateServoGroupSettings(newGroupName));
 
 					Controller.Instance.ServoGroups.Add(g);
 
@@ -1637,6 +1710,9 @@ namespace InfernalRobotics_v3.Gui
 						
 					_servoGroupUIControls.Add(g, newServoGroupLine);
 				}
+
+				foreach(Vessel v in FlightGlobals.VesselsLoaded)
+					OnChangeControllable(v, v.IsControllable);
 
 				if((Controller._IKModule != null) && (Controller._IKServoGroup != null))
 					ToggleIKMode(Controller._IKServoGroup, true);

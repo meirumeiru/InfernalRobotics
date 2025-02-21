@@ -2,7 +2,7 @@
 {
 	public interface IIKModule
 	{
-		void SelectActiveGroup(Interfaces.IServoGroup g);
+		bool SelectActiveGroup(Interfaces.IServoGroup g);
 
 		void SetLimiter(Interfaces.IServoGroup g, bool active);
 		bool GetLimiter(Interfaces.IServoGroup g);

@@ -33,7 +33,8 @@ namespace InfernalRobotics_v3.Command
 
 		public static IIKModule _IKModule;
 		public static IServoGroup _IKServoGroup;
-		
+
+		public static List<ServoGroup.Settings> ServoGroupSettings;		// FEHLER, muss echt static sein, weil der Idiot beim Revert ins VAB kein neues OnLoad aufruft und somit alle meine Settings flöten gehen...
 		public List<IServoGroup> ServoGroups;
 
 		private class IServoState { public bool bIsBuildAidOn = false; }
@@ -103,7 +104,13 @@ namespace InfernalRobotics_v3.Command
 
 				while(groups.Count > 0)
 				{
-					ServoGroup g = new ServoGroup(servo, groups[0]);
+					ServoGroup.Settings settings = new ServoGroup.Settings();
+					settings.name = groups[0];
+					settings.forwardKey = "";
+					settings.reverseKey = "";
+					settings.groupSpeedFactor = 1;
+
+					ServoGroup g = new ServoGroup(servo, settings);
 					Instance.ServoGroups.Add(g);
 					g.Refresh(true);
 
@@ -146,22 +153,36 @@ namespace InfernalRobotics_v3.Command
 				Gui.IRBuildAid.IRBuildAidManager.Instance.HideServoRange(servo);
 		}
 
-		internal struct ServoGroupSetting
-		{ public string name; public string forwardKey; public string reverseKey; public float groupSpeedFactor; };
-
-		internal List<ServoGroupSetting> ServoGroupSettings;
-
-		private void FindAndSetGroupSettings(ServoGroup g)
+		internal ServoGroup.Settings FindOrCreateServoGroupSettings(string name)
 		{
-			foreach(ServoGroupSetting h in ServoGroupSettings)
+			if(ServoGroupSettings == null)
+				ServoGroupSettings = new List<ServoGroup.Settings>();
+
+			foreach(ServoGroup.Settings h in ServoGroupSettings)
 			{
-				if(h.name.CompareTo(g.Name) == 0)
-				{
-					g.ForwardKey = h.forwardKey;
-					g.ReverseKey = h.reverseKey;
-					g.GroupSpeedFactor = h.groupSpeedFactor;
-					return;
-				}
+				if(h.name.CompareTo(name) == 0)
+					return h;
+			}
+
+			ServoGroup.Settings n = new ServoGroup.Settings();
+			n.name = name;
+			n.forwardKey = "";
+			n.reverseKey = "";
+			n.groupSpeedFactor = 1;
+
+			return n;
+		}
+
+		internal void RefreshServoGroupSettings()
+		{
+			ServoGroupSettings = new List<ServoGroup.Settings>();
+
+			foreach(ServoGroup g in ServoGroups)
+			{
+				if(!ServoGroupSettings.Contains(g.settings))
+					ServoGroupSettings.Add(g.settings);
+				// OPTION: an other idea would be to create a copy and use the copy in the group -> this case is possible, if multiple ships use the same group
+// FEHLER, diese Option nochmal prüfen
 			}
 		}
 
@@ -223,8 +244,7 @@ namespace InfernalRobotics_v3.Command
 
 			foreach(var kv in groupServos)
 			{
-				ServoGroup g = new ServoGroup((string)kv.Key);
-				FindAndSetGroupSettings(g);
+				ServoGroup g = new ServoGroup(FindOrCreateServoGroupSettings((string)kv.Key));
 				ServoGroups.Add(g);
 
 				kv.Value.Sort(CompareServoWithIndex);
@@ -235,7 +255,7 @@ namespace InfernalRobotics_v3.Command
 				g.Refresh(false);
 			}
 
-			ServoGroupSettings = null;
+			RefreshServoGroupSettings();
 
 			if(ServoGroups.Count == 0)
 				ServoGroups = null;
@@ -326,8 +346,7 @@ namespace InfernalRobotics_v3.Command
 
 				foreach(var kv in groupServos)
 				{
-					ServoGroup g = new ServoGroup(vessel, (string)kv.Key);
-					FindAndSetGroupSettings(g);
+					ServoGroup g = new ServoGroup(vessel, FindOrCreateServoGroupSettings((string)kv.Key));
 					ServoGroups.Add(g);
 
 					kv.Value.Sort(CompareServoWithIndex);
@@ -339,7 +358,7 @@ namespace InfernalRobotics_v3.Command
 				}
 			}
 
-			ServoGroupSettings = null;
+			RefreshServoGroupSettings();
 
 			if(ServoGroups.Count == 0)
 				ServoGroups = null;
@@ -456,6 +475,7 @@ namespace InfernalRobotics_v3.Command
 				GameEvents.onVesselLoaded.Add(OnVesselLoaded);
 				GameEvents.onVesselDestroy.Add(OnVesselUnloaded);
 				GameEvents.onVesselGoOnRails.Add(OnVesselUnloaded);
+
 				ControllerInstance = this;
 			}
 			else if(HighLogic.LoadedSceneIsEditor)
@@ -620,8 +640,8 @@ namespace InfernalRobotics_v3.Command
 			if(config == null)
 				return;
 
-			if(Controller.Instance.ServoGroupSettings == null)
-				Controller.Instance.ServoGroupSettings = new List<Controller.ServoGroupSetting>();
+			if(Controller.ServoGroupSettings == null)
+				Controller.ServoGroupSettings = new List<ServoGroup.Settings>();
 
 			int Count = int.Parse(config.GetValue("Groups"));
 
@@ -632,25 +652,24 @@ namespace InfernalRobotics_v3.Command
 				string name = groupNode.GetValue("Name");
 
 				int j = 0;
-				while((j < Controller.Instance.ServoGroupSettings.Count)
-				   && (Controller.Instance.ServoGroupSettings[j].name.CompareTo(name) != 0))
+				while((j < Controller.ServoGroupSettings.Count)
+				   && (Controller.ServoGroupSettings[j].name.CompareTo(name) != 0))
 					++j;
 
-				if(j < Controller.Instance.ServoGroupSettings.Count)
-					continue; // already loaded
+				if(j < Controller.ServoGroupSettings.Count)
+					Controller.ServoGroupSettings.RemoveAt(j); // FEHLER, neue Idee -> wir müssen alles liegen lassen, daher werden wir neu immer nur die zuletzt geladene Version verwenden
+				//	continue; // already loaded
 
-				Controller.ServoGroupSetting h = new Controller.ServoGroupSetting();
+				ServoGroup.Settings h = new ServoGroup.Settings();
 
 				h.name = groupNode.GetValue("Name");
 				string forwardKey = groupNode.GetValue("ForwardKey");
-				if(forwardKey != null)
-					h.forwardKey = forwardKey;
+				h.forwardKey = (forwardKey != null) ? forwardKey : "";
 				string reverseKey = groupNode.GetValue("ReverseKey");
-				if(reverseKey != null)
-					h.reverseKey = reverseKey;
+				h.reverseKey = (reverseKey != null) ? reverseKey : "";
 				h.groupSpeedFactor = float.Parse(groupNode.GetValue("GroupSpeedFactor"));
 
-				Controller.Instance.ServoGroupSettings.Add(h);
+				Controller.ServoGroupSettings.Add(h);
 			}
 		}
 	}
