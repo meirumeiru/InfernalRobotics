@@ -225,6 +225,7 @@ namespace InfernalRobotics_v3.Servo
 			oldPosition += p_delta;
 		}
 	
+// FEHLER, mehrere Verfahren einführen für diverse Move-Types
 		public void OvershootProtection(float p_deltaTime)
 		{
 			// -> factor 0.97 to prevent an overshoot better
@@ -256,7 +257,8 @@ namespace InfernalRobotics_v3.Servo
 
 						if(newSpeed < 0f)
 							newSpeed = speed * 0.6f; // smoothing 
-						else if(newSpeed < maxAcceleration * 0.7f * p_deltaTime)
+				
+						if(newSpeed < maxAcceleration * 0.7f * p_deltaTime)
 							newSpeed = maxAcceleration * 0.7f * p_deltaTime; // don't allow too small values
 
 						newPosition =
@@ -269,7 +271,8 @@ namespace InfernalRobotics_v3.Servo
 
 						if(newSpeed < 0f)
 							newSpeed = speed * 0.6f; // smoothing 
-						else if(newSpeed < maxAcceleration * 0.7f * p_deltaTime)
+						
+						if(newSpeed < maxAcceleration * 0.7f * p_deltaTime)
 							newSpeed = maxAcceleration * 0.7f * p_deltaTime; // don't allow too small values
 
 						newPosition =

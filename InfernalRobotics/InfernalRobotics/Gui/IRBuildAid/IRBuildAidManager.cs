@@ -131,7 +131,7 @@ namespace InfernalRobotics_v3.Gui.IRBuildAid
 			
 			BasicInterval currentRange = (BasicInterval)lines[s];
 
-			if(s.IsLimitted)
+			if(s.IsLimited)
 			{
 				currentRange.length = (s.MaxPositionLimit - s.MinPositionLimit);
 				currentRange.offset = s.MinPositionLimit;
@@ -163,7 +163,7 @@ namespace InfernalRobotics_v3.Gui.IRBuildAid
 			if(s.PresetPositions != null)
 				currentRange.SetPresetPositions(s.PresetPositions);
 
-			if(s.IsLimitted)
+			if(s.IsLimited)
 			{
 				if(s.IsInverted)
 					currentRange.SetMainLineColors(mainLineLimitColor2, mainLineLimitColor1);

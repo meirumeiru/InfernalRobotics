@@ -16,6 +16,11 @@ namespace InfernalRobotics_v3.Servo
 			this.Servo = Servo;
 		}
 
+		public Part HostPart
+		{
+			get { return Servo.HostPart; }
+		}
+
 		public void Add(float? position = null)
 		{
 			Servo.AddPresetPosition(position == null ? Servo.CommandedPosition : position.Value);
@@ -34,7 +39,7 @@ namespace InfernalRobotics_v3.Servo
 		public float this[int index]
 		{
 			get { return Servo.PresetPositions[index]; }
-			set { Servo.PresetPositions[index] = Servo.IsLimitted ? Mathf.Clamp(value, Servo.MinPosition, Servo.MaxPosition) : value; }
+			set { Servo.PresetPositions[index] = Servo.IsLimited ? Mathf.Clamp(value, Servo.MinPosition, Servo.MaxPosition) : value; }
 		}
 
 		public void Sort(IComparer<float> sorter = null)

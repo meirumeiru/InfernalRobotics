@@ -10,7 +10,6 @@ namespace InfernalRobotics_v3.Interceptors
 	public class IServoInterceptor : IServo
 	{
 		private IServo s;
-		protected Vessel v;
 
 		private IPresetableInterceptor p;
 
@@ -28,9 +27,8 @@ namespace InfernalRobotics_v3.Interceptors
 		public IServoInterceptor(IServo servo)
 		{
 			s = servo;
-			v = servo.HostPart.vessel;
 
-			p = new IPresetableInterceptor(s.Presets, v);
+			p = new IPresetableInterceptor(s.Presets);
 		}
 
 		public IServo servo
@@ -40,7 +38,7 @@ namespace InfernalRobotics_v3.Interceptors
 
 		private bool IsControllable()
 		{
-			return HighLogic.LoadedSceneIsEditor || (v.CurrentControlLevel > Vessel.ControlLevel.NONE);
+			return HighLogic.LoadedSceneIsEditor || (s.HostPart.vessel.CurrentControlLevel > Vessel.ControlLevel.NONE);
 		}
 
 		////////////////////////////////////////
@@ -203,10 +201,10 @@ namespace InfernalRobotics_v3.Interceptors
 			set { if(IsControllable()) s.DampingPower = value; }
 		}
 
-		public bool IsLimitted
+		public bool IsLimited
 		{
-			get { return s.IsLimitted; }
-			set { if(IsControllable()) s.IsLimitted = value; }
+			get { return s.IsLimited; }
+			set { if(IsControllable()) s.IsLimited = value; }
 		}
 
 		public void ToggleLimits()
@@ -444,9 +442,9 @@ namespace InfernalRobotics_v3.Interceptors
 			if(IsControllable()) s.Move(deltaPosition, targetSpeed);
 		}
 
-		public void PrecisionMove(float targetPosition, float targetSpeed, float accelerationLimit)
+		public void PrecisionMove(float targetPosition, float targetSpeed, float accelerationLimit, bool keepDirection)
 		{
-			if(IsControllable()) s.PrecisionMove(targetPosition, targetSpeed, accelerationLimit);
+			if(IsControllable()) s.PrecisionMove(targetPosition, targetSpeed, accelerationLimit, keepDirection);
 		}
 
 		public void MoveTo(float targetPosition)

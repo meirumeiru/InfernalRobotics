@@ -9,7 +9,6 @@ namespace InfernalRobotics_v3.Interceptors
 	public class IServoGroupInterceptor : IServoGroup
 	{
 		private IServoGroup g;
-		private Vessel v;
 
 		public static IServoGroup BuildInterceptor(IServoGroup group)
 		{
@@ -23,7 +22,6 @@ namespace InfernalRobotics_v3.Interceptors
 		public IServoGroupInterceptor(IServoGroup group)
 		{
 			g = group;
-			v = group.Vessel;
 		}
 
 		public IServoGroup group

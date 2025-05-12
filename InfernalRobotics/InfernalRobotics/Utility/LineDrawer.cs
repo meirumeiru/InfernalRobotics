@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 
+#if DEBUG
 
 namespace InfernalRobotics_v3.Utility
 {
@@ -108,3 +109,5 @@ namespace InfernalRobotics_v3.Utility
 		}
 	}
 }
+
+#endif

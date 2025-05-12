@@ -108,7 +108,7 @@ namespace InfernalRobotics_v3.Interfaces
 		// Gets or sets the damping power for spring. Usen in conjuction with SpringPower to create suspension effect.
 		float DampingPower { get; set; }
 
-		bool IsLimitted { get; set; }
+		bool IsLimited { get; set; }
 		void ToggleLimits();
 
 		// Returns/sets current tweaked MinPosition value
@@ -207,7 +207,7 @@ namespace InfernalRobotics_v3.Interfaces
 
 		void Move(float deltaPosition, float targetSpeed);
 
-		void PrecisionMove(float targetPosition, float targetSpeed, float accelerationLimit);
+		void PrecisionMove(float targetPosition, float targetSpeed, float accelerationLimit, bool keepDirection);
 
 		// Commands the servo to move to specified position at current speed
 		void MoveTo(float targetPosition);

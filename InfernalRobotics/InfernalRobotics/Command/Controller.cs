@@ -140,6 +140,7 @@ namespace InfernalRobotics_v3.Command
 				if(g.Contains(servo))
 				{
 					g.RemoveControl(servo);
+((ModuleIRServo_v3)servo).SerializeGroupNames(); // FEHLER, Quickfix
 					g.Refresh(true);
 				}
 			}
@@ -300,7 +301,12 @@ namespace InfernalRobotics_v3.Command
 			Dictionary<IServo, IServoState> oldServoState = (Instance.servosState != null) ? Instance.servosState : new Dictionary<IServo, IServoState>();
 			servosState = new Dictionary<IServo, IServoState>();
 
+bool somethingChanged = false;
+List<IServoGroup> oldServoGroups = ServoGroups;
 			ServoGroups = new List<IServoGroup>();
+
+//			if(_IKModule != null)
+//				_IKModule.Reset(); // FEHLER, ist doof, evtl. erst später machen, wenn die Gruppe wirklich rausfällt?
 
 			for(int i = 0; i < FlightGlobals.Vessels.Count; i++)
 			{
@@ -308,6 +314,9 @@ namespace InfernalRobotics_v3.Command
 
 				if(!vessel.loaded)
 					continue;
+
+if(vessel != FlightGlobals.ActiveVessel)
+	continue; // FEHLER, aber... ich will doch sowieso nur das aktive steuern, oder nicht?
 
 				var groupServos = new Dictionary<string, List<ServoWithIndex>>();
 
@@ -346,28 +355,74 @@ namespace InfernalRobotics_v3.Command
 
 				foreach(var kv in groupServos)
 				{
-					ServoGroup g = new ServoGroup(vessel, FindOrCreateServoGroupSettings((string)kv.Key));
-					ServoGroups.Add(g);
-
 					kv.Value.Sort(CompareServoWithIndex);
 
-					foreach(ServoWithIndex si in kv.Value)
-						g.AddControl(si.servo, -1);
+					ServoGroup gg = null;
 
-					g.Refresh(false);
+// FEHLER, hier alte Gruppe finden
+if(oldServoGroups != null)
+{
+for(int j = 0; j < oldServoGroups.Count; j++)
+{
+	ServoGroup go = (ServoGroup)oldServoGroups[j];
+
+	if(go.Name != (string)kv.Key)
+		continue;
+
+	if(go.Servos.Count != kv.Value.Count)
+		continue;
+
+	int k = 0;
+	
+	while((k < go.Servos.Count) && (go.Servos[k].HostPart.flightID == kv.Value[k].servo.HostPart.flightID))
+		++k;
+
+	if(k < go.Servos.Count)
+		continue;
+
+	// sonst gefunden !!!
+
+	gg = go;
+
+	oldServoGroups.RemoveAt(j);
+	break;
+}
+}
+
+					if(gg != null)
+						ServoGroups.Add(gg);
+					else
+					{
+somethingChanged = true;
+
+						ServoGroup g = new ServoGroup(vessel, FindOrCreateServoGroupSettings((string)kv.Key));
+						ServoGroups.Add(g);
+
+						foreach(ServoWithIndex si in kv.Value)
+							g.AddControl(si.servo, -1);
+
+						g.Refresh(false);
+					}
 				}
 			}
 
+if(somethingChanged || (oldServoGroups.Count > 0))
+{
 			RefreshServoGroupSettings();
 
 			if(ServoGroups.Count == 0)
 				ServoGroups = null;
+
+			if(_IKModule != null)
+				_IKModule.Reset();
 
 			if((_IKServoGroup != null) && !ServoGroups.Contains(_IKServoGroup))
 				_IKServoGroup = null;
 
 			if(Gui.WindowManager.Instance != null)
 				Gui.WindowManager.Instance.Invalidate();
+}
+// FEHLER, IK evtl. doch resetten, weil, wenn sich was verdreht hätte?... evtl. nötig? oder nicht?
 		}
 
 		private void OnEditorPartAttach(Part part)
@@ -451,7 +506,7 @@ namespace InfernalRobotics_v3.Command
 
 		private void OnVesselWasModified(Vessel v)
 		{
-			RebuildServoGroupsFlight();
+			RebuildServoGroupsFlight();	// FEHLER, wird ausgelöst durch DockingFunctions, wenn er ein Redock macht... das ist etwas doof... aber soll ich jetzt hier auf DockingFunctions-Sachen hören und das hier dann ignorieren?
 		}
 
 		private void OnVesselLoaded(Vessel v)

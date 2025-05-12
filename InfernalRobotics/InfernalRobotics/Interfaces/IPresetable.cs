@@ -5,6 +5,9 @@ namespace InfernalRobotics_v3.Interfaces
 {
 	public interface IPresetable
 	{
+		// Part object that hosts the Presetable
+		Part HostPart { get; }
+
 		// Adds a preset at "position" to the list of presets.
 		void Add(float? position = null);
 

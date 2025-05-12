@@ -396,6 +396,17 @@ namespace InfernalRobotics_v3.Gui
 			ToggleFlightPresetMode(guiFlightPresetModeOn);
 		}
 
+// FEHLER; temp, später aufräumen
+private const ControlTypes MyLocks =
+    ControlTypes.ALL_SHIP_CONTROLS | ControlTypes.EVA_INPUT
+    | ControlTypes.ACTIONS_ALL     | ControlTypes.GROUPS_ALL
+    | ControlTypes.THROTTLE        | ControlTypes.TIMEWARP
+    | ControlTypes.MISC            // Stage locking (mod-L)
+    | ControlTypes.MAP_TOGGLE      // M
+    | ControlTypes.STAGING         // Space
+    | ControlTypes.CAMERACONTROLS // Backspace
+	| ControlTypes.UI_DIALOGS; // damit der Navball nicht hin und her toggelt... verflixt noch eins -> evtl. sogar noch mehr dann machen
+
 		private void InitFlightGroupControls(GameObject newServoGroupLine, IServoGroup g)
 		{
 			var hlg = newServoGroupLine.GetChild("ServoGroupControlsHLG");
@@ -422,10 +433,14 @@ namespace InfernalRobotics_v3.Gui
 
 			var groupExpandTooltip = groupToggle.gameObject.AddComponent<BasicTooltip>();
 			groupExpandTooltip.tooltipText = "Show/hide group's servos";
-			
-			var groupSpeed = hlg.GetChild("ServoGroupSpeedMultiplier").GetComponent<InputField>();
+
+			var groupSpeed = hlg.GetChild("ServoGroupSpeedMultiplier").GetComponent<TMPro.TMP_InputField>();
 			groupSpeed.text = string.Format("{0:#0.##}", g.GroupSpeedFactor);
 			groupSpeed.onEndEdit.AddListener(v => { float parsedV; float.TryParse(v, out parsedV); g.GroupSpeedFactor = parsedV; });
+
+// FEHLER, neue Idee für Locking
+groupSpeed.onSelect.AddListener(v => { InputLockManager.SetControlLock(MyLocks, "IRControlLock"); });
+groupSpeed.onDeselect.AddListener(v => { InputLockManager.RemoveControlLock("IRControlLock"); });
 
 			var groupSpeedTooltip = groupSpeed.gameObject.AddComponent<BasicTooltip>();
 			groupSpeedTooltip.tooltipText = "Speed Multiplier";
@@ -958,6 +973,7 @@ namespace InfernalRobotics_v3.Gui
 						while(g.Servos.Any())
 						{
 							((ModuleIRServo_v3)g.Servos.First().servo).RemoveGroup(g.group);
+((ModuleIRServo_v3)g.Servos.First().servo).SerializeGroupNames(); // FEHLER, Quickfix
 							((ServoGroup)g.group).RemoveControl(g.Servos.First().servo);
 						}
 
@@ -1119,10 +1135,10 @@ namespace InfernalRobotics_v3.Gui
 
 
 			var servoEngageLimitsToggle = newServoLine.GetChild("ServoEngageLimitsToggle").GetComponent<Toggle>();
-			servoEngageLimitsToggle.isOn = s.IsLimitted;
+			servoEngageLimitsToggle.isOn = s.IsLimited;
 			servoEngageLimitsToggle.onValueChanged.AddListener(v =>
 				{
-					s.IsLimitted = v;
+					s.IsLimited = v;
 
 					newServoLine.GetChild("ServoRangeLabel").SetActive(v & advancedModeToggle.isOn);
 					servoRangeMinInputField.gameObject.SetActive(v & advancedModeToggle.isOn);
@@ -1192,7 +1208,7 @@ namespace InfernalRobotics_v3.Gui
 						servoMoveCenterButton.gameObject.SetActive(false);
 						servoMoveRightButton.gameObject.SetActive(false);
 
-						bool showRangeEdit = s.IsLimitted && s.CanHaveLimits;
+						bool showRangeEdit = s.IsLimited && s.CanHaveLimits;
 						// enable advanced
 						servoEngageLimitsToggle.gameObject.SetActive(s.CanHaveLimits);
 						newServoLine.GetChild("ServoRangeLabel").SetActive(showRangeEdit);
@@ -1246,6 +1262,7 @@ namespace InfernalRobotics_v3.Gui
 			servoDeleteButton.onClick.AddListener(() =>
 				{
 					((ModuleIRServo_v3)s.servo).RemoveGroup(g.group);
+((ModuleIRServo_v3)s.servo).SerializeGroupNames(); // FEHLER, Quickfix
 					((ServoGroup)g.group).RemoveControl(s.servo);
 
 					Invalidate();
@@ -1389,7 +1406,7 @@ namespace InfernalRobotics_v3.Gui
 
 		public void UpdateGroupReadoutsFlight(IServoGroup g, GameObject groupUIControls)
 		{
-			var groupSpeed = groupUIControls.GetChild("ServoGroupSpeedMultiplier").GetComponent<InputField>();
+			var groupSpeed = groupUIControls.GetChild("ServoGroupSpeedMultiplier").GetComponent<TMPro.TMP_InputField>();
 			if(!groupSpeed.isFocused)
 				groupSpeed.text = string.Format("{0:#0.##}", g.GroupSpeedFactor);
 
@@ -1428,10 +1445,10 @@ namespace InfernalRobotics_v3.Gui
 			}
 				
 			var servoEngageLimitsToggle = servoUIControls.GetChild("ServoEngageLimitsToggle").GetComponent<Toggle>();
-			servoEngageLimitsToggle.isOn = s.IsLimitted;
-			servoUIControls.GetChild("ServoRangeLabel").SetActive(s.IsLimitted && advancedModeToggle.isOn);
-			servoRangeMinInputField.gameObject.SetActive(s.IsLimitted && advancedModeToggle.isOn);
-			servoRangeMaxInputField.gameObject.SetActive(s.IsLimitted && advancedModeToggle.isOn);
+			servoEngageLimitsToggle.isOn = s.IsLimited;
+			servoUIControls.GetChild("ServoRangeLabel").SetActive(s.IsLimited && advancedModeToggle.isOn);
+			servoRangeMinInputField.gameObject.SetActive(s.IsLimited && advancedModeToggle.isOn);
+			servoRangeMaxInputField.gameObject.SetActive(s.IsLimited && advancedModeToggle.isOn);
 
 			var servoSpeedInputField = servoUIControls.GetChild("ServoSpeedInputField").GetComponent<InputField>();
 			if(!servoSpeedInputField.isFocused)
@@ -1944,7 +1961,6 @@ namespace InfernalRobotics_v3.Gui
 					InputLockManager.SetControlLock(ControlTypes.KEYBOARDINPUT, "IRKeyboardLock");
 				}
 			}
-			
 			else // otherwise make sure the lock is removed
 			{
 				// only try and remove it if there was one there in the first place

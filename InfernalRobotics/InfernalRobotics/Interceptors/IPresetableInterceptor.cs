@@ -8,19 +8,22 @@ namespace InfernalRobotics_v3.Interceptors
 	class IPresetableInterceptor : IPresetable
 	{
 		private IPresetable p;
-		private Vessel v;
 
-		public IPresetableInterceptor(IPresetable presetable, Vessel vessel)
+		public IPresetableInterceptor(IPresetable presetable)
 		{
 			p = presetable;
-			v = vessel;
 		}
 
 		private bool IsControllable()
 		{
-			return HighLogic.LoadedSceneIsEditor || (v.CurrentControlLevel > Vessel.ControlLevel.NONE);
+			return HighLogic.LoadedSceneIsEditor || (p.HostPart.vessel.CurrentControlLevel > Vessel.ControlLevel.NONE);
 		}
 
+
+		public Part HostPart
+		{
+			get { return p.HostPart; }
+		}
 
 		public void Add(float? position = null)
 		{

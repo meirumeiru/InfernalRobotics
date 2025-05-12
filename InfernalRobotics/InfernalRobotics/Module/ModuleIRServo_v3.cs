@@ -504,6 +504,10 @@ namespace InfernalRobotics_v3.Module
 
 			if(LinkedInputPart)
 				LinkedInputPart.Unlink(this);
+
+#if DEBUG
+			DebugUninit();
+#endif
 		}
 
 		public override void OnSave(ConfigNode config)
@@ -523,6 +527,8 @@ namespace InfernalRobotics_v3.Module
 
 			if((part.partInfo != null) && (part.partInfo.partPrefab != null))
 				OnRescale(scalingFactor);
+
+			isOnRails = (vessel != null) && vessel.packed; // FEHLER, neue Idee
 		}
 
 		public void OnVesselGoOnRails(Vessel v)
@@ -582,12 +588,17 @@ namespace InfernalRobotics_v3.Module
 			}
 		}
 
+static bool override1 = false; // FEHLER, temp, wegen DockingFunctions-Problem
+
 		public void OnVesselWasModified(Vessel v)
 		{
 			if(part.vessel == v)
 			{
-				if(part.attachJoint && part.attachJoint.Joint && (Joint != part.attachJoint.Joint))
+				if((part.attachJoint && part.attachJoint.Joint && (Joint != part.attachJoint.Joint))
+			|| override1)
+				{
 					Initialize1();
+				}
 				else // FEHLER, Idee... evtl. wurde ich abgehängt?? -> was mach ich bei "break" oder "die"?
 				{
 					if((part.parent == null) && (fixedMeshTransform != null))
@@ -1435,20 +1446,15 @@ while(correction_1 < -360f) correction_1 += 360f;
 
 			if(mode == ModeType.servo)
 			{
-				float fixedDeltaTime = TimeWarp.fixedDeltaTime;
-
-				if(trackSun)
-					fixedDeltaTime /= TimeWarp.CurrentRate;
-
 				ip.ResetPosition(position);				// FEHLER, das müssten wir auch tun, wenn nichts läuft -> wenn der Joint überdehnt wird, kommt er sonst über 90° vom target weg und dann dreht die Engine durch -> daher das hier auch bei nicht-Bewegung tun!!!
-				ip.PrepareUpdate(fixedDeltaTime);
+				ip.PrepareUpdate(TimeWarp.fixedDeltaTime);
 
-				double amountToConsume = powerDrawRateBase * fixedDeltaTime * 0.5f * (ip.NewSpeed + ip.Speed);
+				double amountToConsume = powerDrawRateBase * TimeWarp.fixedDeltaTime * 0.5f * (ip.NewSpeed + ip.Speed);
 // FEHLER, bei Beschleunigung zusätzlich Strom ziehen, dafür bei Bewegung nicht so sehr?
 
 				double amountConsumed = part.RequestResource(electricResource.id, amountToConsume);
 
-				LastPowerDrawRate = (float)(1000f * amountConsumed / fixedDeltaTime);
+				LastPowerDrawRate = (float)(1000f * amountConsumed / TimeWarp.fixedDeltaTime);
 
 				if(LastPowerDrawRate >= 1000f)
 				{
@@ -1782,97 +1788,8 @@ while(correction_1 < -360f) correction_1 += 360f;
 			// ?? Bug in KSP ?? we need to reset this on every frame, because highliting the parent part (in some situations) sets this to another value
 			lightRenderer.SetPropertyBlock(part.mpb);
 
-			// determine current position and update variables
-			// activate (dynamic) limits if needed
-			
-			if(isRotational)
-			{
-				if(ip.isModulo)
-				{
-					if(commandedPosition > 270f) doModulo(-360f);
-					else if(commandedPosition < -270f) doModulo(360f);
-				}
-
-				// read new position
-				float newPosition =
-					-Vector3.SignedAngle(
-						Joint.transform.TransformVector(rot_jointup), Joint.connectedBody.transform.TransformVector(rot_connectedup),
-							Joint.transform.TransformDirection(Joint.axis))
-					- jointconnectedzero;
-
-				if(!float.IsNaN(newPosition))
-				{
-					if(newPosition < position - 270f) newPosition += 360f;
-					else if(newPosition > position + 270f) newPosition -= 360f;
-
-					position = newPosition;
-
-					if(ip.isModulo)
-						updateDisplayPosition();
-
-					if((isFreeMoving || (mode == ModeType.rotor)) && !isLocked)
-					{
-						commandedPosition = Mathf.Clamp(position, _minPositionLimit, _maxPositionLimit);
-
-						if(ip.isModulo)
-							updateDisplayCommandedPosition();
-
-						if(!requestedPositionIsDefined)
-							requestedPosition = CommandedPosition;
-
-						Joint.targetRotation = Quaternion.AngleAxis(-commandedPosition, Vector3.right); // rotate always around x axis!!
-					}
-
-					if((mode == ModeType.servo) && bUseDynamicLimitJoint)
-					{
-						float min = swap ? ((hasPositionLimit ? -_maxPositionLimit : -maxPosition) + correction_1 - correction_0) : ((hasPositionLimit ? _minPositionLimit : minPosition) + correction_0 - correction_1);
-						float max = swap ? ((hasPositionLimit ? -_minPositionLimit : -minPosition) + correction_1 - correction_0) : ((hasPositionLimit ? _maxPositionLimit : maxPosition) + correction_0 - correction_1);
-
-						if(min + 30 > position)
-						{
-							if(!bLowerLimitJoint || !LimitJoint)
-								BuildLimitJoint(true, min, max);
-						}
-						else if(max - 30 < position)
-						{
-							if(bLowerLimitJoint || !LimitJoint)
-								BuildLimitJoint(false, min, max);
-						}
-						else if(LimitJoint)
-						{
-							Destroy(LimitJoint);
-							LimitJoint = null;
-						}
-					}
-				}
-			}
-			else
-			{
-				Vector3 v =
-					Joint.transform.TransformPoint(Joint.anchor) -
-					Joint.connectedBody.transform.TransformPoint(trans_connectedzero);
-
-				Vector3 v2 = Vector3.Project(v, Joint.transform.TransformDirection(Joint.axis));
-
-				float newPosition = v2.magnitude;
-
-				if(!float.IsNaN(newPosition) && !float.IsInfinity(newPosition))
-				{
-					if(swap)
-						newPosition = minPosition - newPosition - jointconnectedzero;
-					else
-						newPosition = minPosition + newPosition - jointconnectedzero;
-
-					// here we could further (manually) dampen the movement if we wish
-
-					position = newPosition;
-
-					if(isFreeMoving)
-						Joint.targetPosition = Vector3.right * (trans_zero - position); // move always along x axis
-				}
-			}
-
-			CurrentPosition = Position;
+			// store current position for sun tracking
+//			trackCommandedPosition = CommandedPosition;
 
 			// process current input
 
@@ -2000,6 +1917,109 @@ while(correction_1 < -360f) correction_1 += 360f;
 					SetColor(2);
 			}
 
+// FEHLER, neue Idee... Anpassung des GUI um zu verhindern, dass man in die falsche Richtung dreht...
+// aktuell experimentell
+if(ip.isModulo) // deckt schon alles ab von wegen keine limits und kein minmax und so...
+{
+	((BaseAxisField)Fields["requestedPosition"]).minValue = CommandedPosition - 180f;
+	((BaseAxisField)Fields["requestedPosition"]).maxValue = CommandedPosition + 180f;
+
+	((UI_FloatRange)Fields["requestedPosition"].uiControlFlight).minValue = CommandedPosition - 180f;
+	((UI_FloatRange)Fields["requestedPosition"].uiControlFlight).maxValue = CommandedPosition + 180f;
+}
+
+			// determine current position and update variables
+			// activate (dynamic) limits if needed
+			
+			if(isRotational)
+			{
+				if(ip.isModulo)
+				{
+					if(commandedPosition > 270f) doModulo(-360f);
+					else if(commandedPosition < -270f) doModulo(360f);
+				}
+
+				// read new position
+				float newPosition =
+					-Vector3.SignedAngle(
+						Joint.transform.TransformVector(rot_jointup), Joint.connectedBody.transform.TransformVector(rot_connectedup),
+							Joint.transform.TransformDirection(Joint.axis))
+					- jointconnectedzero;
+
+				if(!float.IsNaN(newPosition))
+				{
+					if(newPosition < position - 270f) newPosition += 360f;
+					else if(newPosition > position + 270f) newPosition -= 360f;
+
+					position = newPosition;
+
+					if(ip.isModulo)
+						updateDisplayPosition();
+
+					if((isFreeMoving || (mode == ModeType.rotor)) && !isLocked)
+					{
+						commandedPosition = Mathf.Clamp(position, _minPositionLimit, _maxPositionLimit);
+
+						if(ip.isModulo)
+							updateDisplayCommandedPosition();
+
+						if(!requestedPositionIsDefined)
+							requestedPosition = CommandedPosition;
+
+						Joint.targetRotation = Quaternion.AngleAxis(-commandedPosition, Vector3.right); // rotate always around x axis!!
+					}
+
+					if((mode == ModeType.servo) && bUseDynamicLimitJoint)
+					{
+						float min = swap ? ((hasPositionLimit ? -_maxPositionLimit : -maxPosition) + correction_1 - correction_0) : ((hasPositionLimit ? _minPositionLimit : minPosition) + correction_0 - correction_1);
+						float max = swap ? ((hasPositionLimit ? -_minPositionLimit : -minPosition) + correction_1 - correction_0) : ((hasPositionLimit ? _maxPositionLimit : maxPosition) + correction_0 - correction_1);
+
+						if(min + 30 > position)
+						{
+							if(!bLowerLimitJoint || !LimitJoint)
+								BuildLimitJoint(true, min, max);
+						}
+						else if(max - 30 < position)
+						{
+							if(bLowerLimitJoint || !LimitJoint)
+								BuildLimitJoint(false, min, max);
+						}
+						else if(LimitJoint)
+						{
+							Destroy(LimitJoint);
+							LimitJoint = null;
+						}
+					}
+				}
+			}
+			else
+			{
+				Vector3 v =
+					Joint.transform.TransformPoint(Joint.anchor) -
+					Joint.connectedBody.transform.TransformPoint(trans_connectedzero);
+
+				Vector3 v2 = Vector3.Project(v, Joint.transform.TransformDirection(Joint.axis));
+
+				float newPosition = v2.magnitude;
+
+				if(!float.IsNaN(newPosition) && !float.IsInfinity(newPosition))
+				{
+					if(swap)
+						newPosition = minPosition - newPosition - jointconnectedzero;
+					else
+						newPosition = minPosition + newPosition - jointconnectedzero;
+
+					// here we could further (manually) dampen the movement if we wish
+
+					position = newPosition;
+
+					if(isFreeMoving)
+						Joint.targetPosition = Vector3.right * (trans_zero - position); // move always along x axis
+				}
+			}
+
+			CurrentPosition = Position;
+
 			// perform updates of children and other modules
 
 			UpdatePosition();
@@ -2011,6 +2031,24 @@ while(correction_1 < -360f) correction_1 += 360f;
 		{
 			if(!part || !part.vessel || !part.vessel.rootPart || !Joint)
 				return;
+
+			if(HighLogic.LoadedSceneIsFlight)
+			{
+				double amount, maxAmount;
+				part.GetConnectedResourceTotals(electricResource.id, electricResource.resourceFlowMode, out amount, out maxAmount);
+
+				hasElectricPower = (amount > 0);
+
+				if(!hasElectricPower)
+				{
+					if(lightStatus != -1)
+					{ 
+						lightStatus = -1;
+						lightRenderer.material.SetColor(lightColorId, lightColorOff);
+					}
+				}
+				else if(lightStatus == -1) lightStatus = -2;
+			}
 
 			if(isOnRails)
 				return;
@@ -2029,24 +2067,6 @@ while(correction_1 < -360f) correction_1 += 360f;
 					pitchMultiplier = (float)Math.Sqrt(pitchMultiplier);
 
 				soundSound.Update(soundVolume, soundPitch * pitchMultiplier);
-			}
-
-			if(HighLogic.LoadedSceneIsFlight)
-			{
-				double amount, maxAmount;
-				part.GetConnectedResourceTotals(electricResource.id, electricResource.resourceFlowMode, out amount, out maxAmount);
-
-				hasElectricPower = (amount > 0);
-
-				if(!hasElectricPower)
-				{
-					if(lightStatus != -1)
-					{ 
-						lightStatus = -1;
-						lightRenderer.material.SetColor(lightColorId, lightColorOff);
-					}
-				}
-				else if(lightStatus == -1) lightStatus = -2;
 			}
 		}
 
@@ -2186,7 +2206,7 @@ while(correction_1 < -360f) correction_1 += 360f;
 // FEHLER, evtl. anderen Preis setzen für anderen Modus?
 
 			if(mode != ModeType.servo)
-				IsLimitted = false;
+				IsLimited = false;
 
 			if(Joint)
 				Initialize2();
@@ -2661,14 +2681,14 @@ while(correction_1 < -360f) correction_1 += 360f;
 			UpdateUI();
 		}
 
-		public bool IsLimitted
+		public bool IsLimited
 		{
 			get { return hasPositionLimit; }
 			set { if(object.Equals(hasPositionLimit, value)) return; hasPositionLimit = value; onChanged_hasPositionLimit(null); }
 		}
 
 		public void ToggleLimits()
-		{ IsLimitted = !IsLimitted; }
+		{ IsLimited = !IsLimited; }
 
 		[KSPField(isPersistant = false, guiActive = true, guiActiveEditor = true, guiName = "Limits", guiFormat = "F2", guiUnits = ""),
 			UI_MinMaxRange(minValueX = 0f, minValueY = 0.5f, maxValueX = 179.5f, maxValueY = 180f, suppressEditorShipModified = true, affectSymCounterparts = UI_Scene.All)]
@@ -3269,7 +3289,7 @@ while(correction_1 < -360f) correction_1 += 360f;
 		}
 
 		// special function for inverse kinematics modules
-		public void PrecisionMove(float deltaPosition, float targetSpeed, float acceleration)
+		public void PrecisionMove(float deltaPosition, float targetSpeed, float acceleration, bool keepDirection)
 		{
 			if(isOnRails || isLocked || isFreeMoving)
 				return;
@@ -3282,11 +3302,12 @@ while(correction_1 < -360f) correction_1 += 360f;
 
 			float targetPosition = commandedPosition + deltaPosition;
 
-if(ip.isModulo) // FEHLER, neue Idee, mal sehen wo der Fehler noch liegt
-{
-while(targetPosition > 360f) targetPosition -= 360f;
-while(targetPosition < -360f) targetPosition += 360f;
-}
+			// correct value to smallest possible movement direction is not enforced
+			if(!keepDirection && ip.isModulo)
+			{
+				while(targetPosition - position > 180f) targetPosition -= 360f;
+				while(targetPosition - position < -180f) targetPosition += 360f;
+			}
 
 			ip.maxAcceleration = acceleration * factorAcceleration;
 			ip.SetCommand(targetPosition, Mathf.Clamp(targetSpeed, 0.005f, speedLimit) * factorSpeed);
@@ -3294,19 +3315,39 @@ while(targetPosition < -360f) targetPosition += 360f;
 			requestedPositionIsDefined = false;
 		}
 
+//		private float trackCommandedPosition;
+
 		private void TrackMove()
 		{
 			if(isLocked)
 				return;
 
-			Vector3 toSun = Planetarium.fetch.Sun.transform.position - Joint.transform.position;
+			Vector3 toSun = (Planetarium.fetch.Sun.transform.position - Joint.transform.position).normalized;
 
 			if(Vector3.Angle(toSun, part.transform.TransformVector(axis)) < 5f)
 				return; // axis points almost to the sun, we cannot track it like this
 
-			toSun = Vector3.ProjectOnPlane(toSun, part.transform.TransformVector(axis));
+			toSun = Vector3.ProjectOnPlane(toSun, part.transform.TransformVector(axis)).normalized;
 
-			float deltaPosition = Vector3.SignedAngle(Quaternion.AngleAxis(trackAngle, part.transform.TransformVector(axis)) * part.transform.TransformVector(pointer), toSun, part.transform.TransformVector(axis));
+			float deltaPosition = Vector3.SignedAngle((Quaternion.AngleAxis(trackAngle, part.transform.TransformVector(axis)) * part.transform.TransformVector(pointer)).normalized, toSun, part.transform.TransformVector(axis).normalized);
+
+//float deltaPosition2 = Vector3.SignedAngle(part.transform.TransformVector(pointer).normalized, toSun, part.transform.TransformVector(axis).normalized);
+//deltaPosition2 -= trackAngle;
+
+//if(use2) deltaPosition = deltaPosition2;
+
+
+ld.Draw(2, Joint.transform.position, Joint.transform.position + Quaternion.AngleAxis(trackAngle, part.transform.TransformVector(axis)) * part.transform.TransformVector(pointer) * 2);
+ld.Draw(3, Joint.transform.position, Joint.transform.position + part.transform.TransformVector(axis) * 2);
+
+ld.Draw(5, Joint.transform.position, Joint.transform.position + toSun * 2);
+
+
+ld.Draw(6, Joint.transform.position, Joint.transform.position +
+part.transform.rotation * Quaternion.AngleAxis(deltaPosition, part.transform.TransformVector(axis))
+* pointer * 2);
+	// das erwarte ich irgendwie... oder?
+
 
 			if(swap)
 				deltaPosition = -deltaPosition;
@@ -3314,15 +3355,27 @@ while(targetPosition < -360f) targetPosition += 360f;
 			if(isInverted)
 				deltaPosition = -deltaPosition;
 
-			float targetPosition = commandedPosition + deltaPosition;
+// nur wenn genug gross -> neu... dann FEHLER FEHLER
+			if(Mathf.Abs(deltaPosition) > 0.001f)
+			{
+				float targetSpeed = DefaultSpeed;
 
-			MoveToPositionExecute(targetPosition, DefaultSpeed);
+float _tgtSpeed = Mathf.Abs(deltaPosition) / (targetSpeed * factorSpeed);
+float _tgtSpeed2 = Mathf.Clamp(_tgtSpeed, 0.005f, speedLimit);
+	// FEHLER, so dass es in einem Mal erreichbar ist, wenn das möglich ist... -> unsicher, ob die Rechnung stimmt
 
-			for(int i = 0; i < part.symmetryCounterparts.Count; i++)
-				part.symmetryCounterparts[i].GetComponent<ModuleIRServo_v3>().MoveToPositionExecute(targetPosition, DefaultSpeed);
+//_tgtSpeed2 *= fff;
 
-			for(int i = 0; i < LinkedInputParts.Count; i++)
-				LinkedInputParts[i].MoveExecute(targetPosition, DefaultSpeed);
+				float targetPosition = CommandedPosition + deltaPosition;
+
+				MoveToPositionExecute(targetPosition, _tgtSpeed2);
+
+			//	for(int i = 0; i < part.symmetryCounterparts.Count; i++)
+			//		part.symmetryCounterparts[i].GetComponent<ModuleIRServo_v3>().MoveToPositionExecute(targetPosition, DefaultSpeed);
+
+//				for(int i = 0; i < LinkedInputParts.Count; i++)
+//					LinkedInputParts[i].MoveToPositionExecute(targetPosition, _tgtSpeed2);
+			}
 		}
 
 		private void MoveExecute(float deltaPosition, float targetSpeed)
@@ -3333,24 +3386,13 @@ while(targetPosition < -360f) targetPosition += 360f;
 			if(isInverted)
 				deltaPosition = -deltaPosition;
 
-if(ip.isModulo && !float.IsNaN(deltaPosition) && !float.IsInfinity(deltaPosition)) // FEHLER, neue Idee, mal sehen wo der Fehler noch liegt
-{
-	while(deltaPosition > 360f) deltaPosition -= 360f;
-	while(deltaPosition < -360f) deltaPosition += 360f;
-
-	if(deltaPosition > 180f)
-					deltaPosition = 360f - deltaPosition;
-	else if(deltaPosition < -180f)
-					deltaPosition = -360f - deltaPosition;
-}
+			if(ip.isModulo && !float.IsNaN(deltaPosition) && !float.IsInfinity(deltaPosition))
+			{
+				while(deltaPosition > 180f) deltaPosition -= 360f;
+				while(deltaPosition < -180f) deltaPosition += 360f;
+			}
 
 			float targetPosition = commandedPosition + deltaPosition;
-
-if(ip.isModulo && !float.IsNaN(targetPosition) && !float.IsInfinity(targetPosition)) // FEHLER, neue Idee, mal sehen wo der Fehler noch liegt
-{
-while(targetPosition > 360f) targetPosition -= 360f;
-while(targetPosition < -360f) targetPosition += 360f;
-}
 
 			float _targetSpeed = Mathf.Clamp(targetSpeed, 0.1f, speedLimit);
 			float _acceleration = accelerationLimit;
@@ -3415,16 +3457,12 @@ while(targetPosition < -360f) targetPosition += 360f;
 			else
 				targetPosition = (swap ? 1.0f : -1.0f) * (targetPosition - zeroInvert + correction_1 - correction_0);
 
-if(ip.isModulo) // FEHLER, neue Idee, mal sehen wo der Fehler noch liegt
-{
-while(targetPosition > 360f) targetPosition -= 360f;
-while(targetPosition < -360f) targetPosition += 360f;
-
-if(targetPosition - position > 180f)
-					targetPosition = 360f - targetPosition;
-if(targetPosition - position < -180f)
-					targetPosition = -360f - targetPosition;
-}
+			// correct value to smallest possible movement
+			if(ip.isModulo)
+			{
+				while(targetPosition - position > 180f) targetPosition -= 360f;
+				while(targetPosition - position < -180f) targetPosition += 360f;
+			}
 
 			float _targetSpeed = Mathf.Clamp(targetSpeed, 0.1f, speedLimit);
 			float _acceleration = accelerationLimit;
@@ -3565,6 +3603,11 @@ if(targetPosition - position < -180f)
 		private float minPosition = 0;
 		[KSPField(isPersistant = false), SerializeField]
 		private float maxPosition = 360;
+
+		public bool HasMinMaxPosition
+		{
+			get { return hasMinMaxPosition; }
+		}
 
 		public float MinPosition
 		{
@@ -3712,7 +3755,7 @@ if(targetPosition - position < -180f)
 				return;
 
 			IsInverted = false;
-			IsLimitted = false;
+			IsLimited = false;
 
 			EditorSetToPosition(0f);
 		}
@@ -4361,6 +4404,8 @@ if(targetPosition - position < -180f)
 		private void onChanged_activateCollisions(object o)
 		{
 			GameEvents.OnCollisionIgnoreUpdate.Fire();
+
+// FEHLER, nicht nur senden, sondern noch drauf achten? -> wie auch immer, aber die Kollisionen scheinen beim Laden nicht erneut gesetzt zu werden oder sowas... irgendwas stimmt nicht ganz -> klären, kann sein, dass meine Info auch falsch ist und alles ok ist -> nach Docking, wie ist es da? z.B. ...
 		}
 
 		////////////////////////////////////////
@@ -4625,7 +4670,7 @@ if(fixedMeshTransform != null)
 				bool newHasPositionLimits = ((MinPosition != MinPositionLimit) || (MaxPosition != MaxPositionLimit));
 
 				if(hasPositionLimit != newHasPositionLimits)
-					IsLimitted = newHasPositionLimits;
+					IsLimited = newHasPositionLimits;
 				else
 				{
 					axisFieldLimits[fieldName].softLimits = new Vector2(MinPositionLimit, MaxPositionLimit);
@@ -4670,6 +4715,12 @@ if(fixedMeshTransform != null)
 		{
 			ld = new MultiLineDrawer();
 			ld.Create(null);
+		}
+
+		private void DebugUninit()
+		{
+			ld.Destroy();
+			ld = null;
 		}
 
 		private void DrawPointer(int idx, Vector3 p_vector)
