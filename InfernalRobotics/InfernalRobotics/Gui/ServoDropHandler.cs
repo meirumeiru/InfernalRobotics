@@ -29,7 +29,7 @@ namespace InfernalRobotics_v3.Gui
 				if(pair.ui == servoUIControls)
 				{
 					var newGroupIndex = dragHandler.dropZone.parent.GetSiblingIndex();
-					Controller.MoveServo(pair.group.group, Controller.Instance.ServoGroups[newGroupIndex], insertAt, pair.servo.servo);
+					ServoGroup.MoveServo(pair.group.group, Controller.Instance.ServoGroups[newGroupIndex], pair.servo.servo, insertAt);
 
 					if(Gui.WindowManager.Instance != null)
 						Gui.WindowManager.Instance.Invalidate();

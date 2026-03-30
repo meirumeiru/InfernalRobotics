@@ -28,22 +28,10 @@ namespace InfernalRobotics_v3.Command
 
 		private float totalElectricChargeRequirement;
 
-		public ServoGroup(IServo servo, Vessel v, Settings s)
-			: this(servo, s)
-		{
-			vessel = v;
-		}
-
 		public ServoGroup(Vessel v, Settings s)
 			: this(s)
 		{
 			vessel = v;
-		}
-
-		public ServoGroup(IServo servo, Settings s)
-			: this(s)
-		{
-			servos.Add(servo);
 		}
 
 		public ServoGroup(Settings s)
@@ -54,6 +42,9 @@ namespace InfernalRobotics_v3.Command
 
 			Expanded = false;
 			bDirty = true;
+
+			BuildAid = false;
+			IKActive = false;
 		}
 
 		public IServoGroup group
@@ -83,7 +74,7 @@ namespace InfernalRobotics_v3.Command
 			return servos.Contains(servo);
 		}
 
-		public void AddControl(IServo servo, int index)
+		private void AddControl(IServo servo, int index)
 		{
 			if(servos.Contains(servo))
 				return;
@@ -99,13 +90,13 @@ namespace InfernalRobotics_v3.Command
 			bDirty = true;
 		}
 
-		public void RemoveControl(IServo servo)
+		private void RemoveControl(IServo servo)
 		{
 			if(servos.Remove(servo))
 				bDirty = true;
 		}
 
-		public void Refresh(bool bReserialize)
+		private void Refresh()
 		{
 			for(int i = 0; i < servos.Count; i++)
 			{
@@ -114,9 +105,49 @@ namespace InfernalRobotics_v3.Command
 				s.RemoveGroup(this);
 				s.AddGroup(this, i);
 
-				if(bReserialize)
-					s.SerializeGroupNames();
+				s.SerializeGroupNames();
 			}
+		}
+
+		public static void AddControl(IServoGroup group, IServo servo, int index, bool updateGroup = true)
+		{
+			((ServoGroup)group).AddControl(servo, index);
+
+			if(updateGroup)
+				((ServoGroup)group).Refresh();
+		}
+
+		public static void RemoveControl(IServoGroup group, IServo servo, bool updateServo, bool updateGroup = true)
+		{
+			if(updateServo)
+			{
+				((ModuleIRServo_v3)servo.servo).RemoveGroup(group);
+				((ModuleIRServo_v3)servo.servo).SerializeGroupNames();
+			}
+
+			((ServoGroup)group).RemoveControl(servo);
+
+			if(updateGroup)
+				((ServoGroup)group).Refresh();
+		}
+
+		public static void MoveServo(IServoGroup from, IServoGroup to, IServo servo, int index, bool updateGroups = true)
+		{
+			((ModuleIRServo_v3)servo.servo).RemoveGroup(from.group);
+
+			((ServoGroup)from.group).RemoveControl(servo);
+			((ServoGroup)to.group).AddControl(servo, index);
+
+			if(updateGroups)
+			{
+				((ServoGroup)from.group).Refresh();
+				((ServoGroup)to.group).Refresh();
+			}
+		}
+
+		public static void UpdateGroup(IServoGroup group)
+		{
+			((ServoGroup)group).Refresh();
 		}
 
 		////////////////////////////////////////
@@ -290,5 +321,10 @@ namespace InfernalRobotics_v3.Command
 		// BuildAid
 
 		public bool BuildAid { get; set; }
+
+		////////////////////////////////////////
+		// IK
+
+		public bool IKActive { get; set; }
 	}
 }

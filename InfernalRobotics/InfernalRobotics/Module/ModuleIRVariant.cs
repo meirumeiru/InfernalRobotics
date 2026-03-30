@@ -193,16 +193,21 @@ namespace InfernalRobotics_v3.Module
             if(modelTransform != null)
 				modelTransform.localScale = part.partInfo.partPrefab.transform.Find("model").transform.localScale * factor;
 
-			ModuleIRServo_v3 servo_ = part.GetComponent<ModuleIRServo_v3>();
+			ModuleIRServo_v3 servo = part.GetComponent<ModuleIRServo_v3>();
 
-			float cmdp = (servo_ != null) ? servo_.CommandedPosition : 0f;
-
+			float cmdp = 0f;
+			
 			if(HighLogic.LoadedSceneIsEditor)
 			{
-				if(servo_ != null)
+				if(servo != null)
 				{
-					servo_.EditorMiniInit();
-					servo_.EditorSetTo(servo_.DefaultPosition);
+					cmdp = servo.CommandedPosition;
+					
+					if(!servo.IsRotational)
+						cmdp *= (factor / currentFactor);
+
+					servo.EditorMiniInit();
+					servo.EditorSetTo(servo.DefaultPosition);
 				}
 
 				for(int i = 0; i < part.attachNodes.Count; i++)
@@ -241,17 +246,13 @@ namespace InfernalRobotics_v3.Module
 			PrepareDragCubes();
 			ScaleDragCubes(factor);
 
-			ModuleIRServo_v3 servo = part.GetComponent<ModuleIRServo_v3>();
-
 			if(servo != null)
 				servo.OnRescale(factor);
 
 			currentFactor = factor;
 
-			if(HighLogic.LoadedSceneIsEditor && (servo_ != null))
-			{
-				servo_.EditorSetTo(cmdp);
-			}
+			if(HighLogic.LoadedSceneIsEditor && (servo != null))
+				servo.EditorSetTo(cmdp);
 		}
 
 		////////////////////////////////////////

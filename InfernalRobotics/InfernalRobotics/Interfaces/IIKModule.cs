@@ -19,6 +19,8 @@
 		void SetShowPosition(Interfaces.IServoGroup g, bool show);
 		bool GetShowPosition(Interfaces.IServoGroup g);
 
+		void SelectTarget(Interfaces.IServoGroup g);
+
 		void Action1(Interfaces.IServoGroup g);
 		void Action2(Interfaces.IServoGroup g);
 	}

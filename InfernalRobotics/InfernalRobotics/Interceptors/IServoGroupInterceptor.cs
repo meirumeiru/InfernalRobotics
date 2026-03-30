@@ -178,5 +178,14 @@ namespace InfernalRobotics_v3.Interceptors
 			get { return g.BuildAid; }
 			set { g.BuildAid = value; }
 		}
+
+		////////////////////////////////////////
+		// IK
+
+		public bool IKActive
+		{
+			get { return g.IKActive; }
+			set { g.IKActive = value; }
+		}
 	}
 }

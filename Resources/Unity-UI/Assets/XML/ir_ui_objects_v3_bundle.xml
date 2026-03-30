@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<KSPBundleDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" UrlName="ir_ui_objects_v3" Name="ir_ui_objects_v3" CreatedTime="-8584558354095460791" AutoLoad="false">
+<KSPBundleDefinition xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" UrlName="ir_ui_objects_v3" Name="ir_ui_objects_v3" CreatedTime="-8584320620232208707" AutoLoad="false">
   <Author />
   <Info />
   <Assets>
@@ -41,6 +41,7 @@
     <Asset Name="revert" Path="Assets/Images/Icons/revert.png" Type="Texture2D" Url="Images/Icons/revert" AutoLoad="false" />
     <Asset Name="right" Path="Assets/Images/Icons/right.png" Type="Texture2D" Url="Images/Icons/right" AutoLoad="false" />
     <Asset Name="right_toggle" Path="Assets/Images/Icons/right_toggle.png" Type="Texture2D" Url="Images/Icons/right_toggle" AutoLoad="false" />
+    <Asset Name="select_pointer" Path="Assets/Images/Icons/select_pointer.png" Type="Texture2D" Url="Images/Icons/select_pointer" AutoLoad="false" />
     <Asset Name="select_target" Path="Assets/Images/Icons/select_target.png" Type="Texture2D" Url="Images/Icons/select_target" AutoLoad="false" />
     <Asset Name="trash" Path="Assets/Images/Icons/trash.png" Type="Texture2D" Url="Images/Icons/trash" AutoLoad="false" />
     <Asset Name="unlocked" Path="Assets/Images/Icons/unlocked.png" Type="Texture2D" Url="Images/Icons/unlocked" AutoLoad="false" />

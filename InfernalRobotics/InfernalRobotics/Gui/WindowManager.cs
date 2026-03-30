@@ -244,11 +244,12 @@ namespace InfernalRobotics_v3.Gui
 					EnableElement(parent, "ServoGroupMovePrevPresetButton", enabled);
 					EnableElement(parent, "ServoGroupRevertButton", enabled);
 					EnableElement(parent, "ServoGroupMoveNextPresetButton", enabled);
+					EnableElement(parent, "IKEndEffectorButton", enabled);
+					EnableElement(parent, "IKPositionVisibleButton", enabled);
 					EnableElement(parent, "IKLimiterButton", enabled);
 					EnableElement(parent, "IKDirectModeButton", enabled);
 					EnableElement(parent, "IKRelaxButton", enabled);
-					EnableElement(parent, "IKEndEffectorButton", enabled);
-					EnableElement(parent, "IKPositionVisibleButton", enabled);
+					EnableElement(parent, "IKTargetButton", enabled);
 					EnableElement(parent, "IKAction1Button", enabled);
 					EnableElement(parent, "IKAction2Button", enabled);
 					EnableElement(parent, "IKModeToggleButton", enabled);
@@ -396,16 +397,15 @@ namespace InfernalRobotics_v3.Gui
 			ToggleFlightPresetMode(guiFlightPresetModeOn);
 		}
 
-// FEHLER; temp, später aufräumen
-private const ControlTypes MyLocks =
-    ControlTypes.ALL_SHIP_CONTROLS | ControlTypes.EVA_INPUT
-    | ControlTypes.ACTIONS_ALL     | ControlTypes.GROUPS_ALL
-    | ControlTypes.THROTTLE        | ControlTypes.TIMEWARP
-    | ControlTypes.MISC            // Stage locking (mod-L)
-    | ControlTypes.MAP_TOGGLE      // M
-    | ControlTypes.STAGING         // Space
-    | ControlTypes.CAMERACONTROLS // Backspace
-	| ControlTypes.UI_DIALOGS; // damit der Navball nicht hin und her toggelt... verflixt noch eins -> evtl. sogar noch mehr dann machen
+		private const ControlTypes MyLocks =
+		      ControlTypes.ALL_SHIP_CONTROLS | ControlTypes.EVA_INPUT
+			| ControlTypes.ACTIONS_ALL       | ControlTypes.GROUPS_ALL
+			| ControlTypes.THROTTLE          | ControlTypes.TIMEWARP
+			| ControlTypes.MISC
+			| ControlTypes.MAP_TOGGLE
+			| ControlTypes.STAGING
+			| ControlTypes.CAMERACONTROLS
+			| ControlTypes.UI_DIALOGS;     // NavBall
 
 		private void InitFlightGroupControls(GameObject newServoGroupLine, IServoGroup g)
 		{
@@ -438,9 +438,8 @@ private const ControlTypes MyLocks =
 			groupSpeed.text = string.Format("{0:#0.##}", g.GroupSpeedFactor);
 			groupSpeed.onEndEdit.AddListener(v => { float parsedV; float.TryParse(v, out parsedV); g.GroupSpeedFactor = parsedV; });
 
-// FEHLER, neue Idee für Locking
-groupSpeed.onSelect.AddListener(v => { InputLockManager.SetControlLock(MyLocks, "IRControlLock"); });
-groupSpeed.onDeselect.AddListener(v => { InputLockManager.RemoveControlLock("IRControlLock"); });
+			groupSpeed.onSelect.AddListener(v => { InputLockManager.SetControlLock(MyLocks, "IRControlLock"); });
+			groupSpeed.onDeselect.AddListener(v => { InputLockManager.RemoveControlLock("IRControlLock"); });
 
 			var groupSpeedTooltip = groupSpeed.gameObject.AddComponent<BasicTooltip>();
 			groupSpeedTooltip.tooltipText = "Speed Multiplier";
@@ -515,12 +514,31 @@ groupSpeed.onDeselect.AddListener(v => { InputLockManager.RemoveControlLock("IRC
 
 			// IK
 
+			var ikEndEffectorButton = hlg.GetChild("IKEndEffectorButton").GetComponent<Button>();
+			ikEndEffectorButton.onClick.AddListener(() => { Controller._IKModule.SelectEndEffector(g.group); });
+
+			var ikEndEffectorTooltip = ikEndEffectorButton.gameObject.AddComponent<BasicTooltip>();
+			ikEndEffectorTooltip.tooltipText = "Select End Effector";
+
+			var ikPositionVisibleButton = hlg.GetChild("IKPositionVisibleButton");
+			var ikPositionVisibleToggle = ikPositionVisibleButton.GetComponent<Toggle>();
+			if(Controller._IKModule != null)
+				ikPositionVisibleToggle.isOn = Controller._IKModule.GetShowPosition(g.group);
+			ikPositionVisibleToggle.onValueChanged.AddListener(v =>
+				{ Controller._IKModule.SetShowPosition(g.group, v); });
+
+			var ikPositionVisibleTooltip = ikPositionVisibleButton.gameObject.AddComponent<BasicTooltip>();
+			ikPositionVisibleTooltip.tooltipText = "Show End Effector Position";
+
 			var ikLimiterButton = hlg.GetChild("IKLimiterButton");
 			var ikLimiterToggle = ikLimiterButton.GetComponent<Toggle>();
 			if(Controller._IKModule != null)
 				ikLimiterToggle.isOn = Controller._IKModule.GetLimiter(g.group);
 			ikLimiterToggle.onValueChanged.AddListener(v =>
 				{ Controller._IKModule.SetLimiter(g.group, v); });
+
+			var ikLimiterTooltip = ikLimiterButton.gameObject.AddComponent<BasicTooltip>();
+			ikLimiterTooltip.tooltipText = "Limiter";
 
 			var ikDirectModeButton = hlg.GetChild("IKDirectModeButton");
 			var ikDirectModeToggle = ikDirectModeButton.GetComponent<Toggle>();
@@ -529,18 +547,20 @@ groupSpeed.onDeselect.AddListener(v => { InputLockManager.RemoveControlLock("IRC
 			ikDirectModeToggle.onValueChanged.AddListener(v =>
 				{ Controller._IKModule.SetDirectMode(g.group, v); });
 
+			var ikDirectModeTooltip = ikDirectModeButton.gameObject.AddComponent<BasicTooltip>();
+			ikDirectModeTooltip.tooltipText = "Direct Mode";
+
 			var ikRelaxButton = hlg.GetChild("IKRelaxButton").GetComponent<Button>();
 			ikRelaxButton.onClick.AddListener(() => { Controller._IKModule.Relax(g.group, 50); });
 
-			var ikEndEffectorButton = hlg.GetChild("IKEndEffectorButton").GetComponent<Button>();
-			ikEndEffectorButton.onClick.AddListener(() => { Controller._IKModule.SelectEndEffector(g.group); });
+			var ikRelaxTooltip = ikRelaxButton.gameObject.AddComponent<BasicTooltip>();
+			ikRelaxTooltip.tooltipText = "Relax";
 
-			var ikPositionVisibleButton = hlg.GetChild("IKPositionVisibleButton");
-			var ikPositionVisibleToggle = ikPositionVisibleButton.GetComponent<Toggle>();
-			if(Controller._IKModule != null)
-				ikPositionVisibleToggle.isOn = Controller._IKModule.GetShowPosition(g.group);
-			ikPositionVisibleToggle.onValueChanged.AddListener(v =>
-				{ Controller._IKModule.SetShowPosition(g.group, v); });
+			var ikTargetButton = hlg.GetChild("IKTargetButton").GetComponent<Button>();
+			ikTargetButton.onClick.AddListener(() => { Controller._IKModule.SelectTarget(g.group); });
+
+			var ikTargetTooltip = ikTargetButton.gameObject.AddComponent<BasicTooltip>();
+			ikTargetTooltip.tooltipText = "Select Target";
 
 			var ikAction1Button = hlg.GetChild("IKAction1Button").GetComponent<Button>();
 			ikAction1Button.onClick.AddListener(() => { Controller._IKModule.Action1(g.group); });
@@ -551,13 +571,14 @@ groupSpeed.onDeselect.AddListener(v => { InputLockManager.RemoveControlLock("IRC
 			var ikModeToggleButton = hlg.GetChild("IKModeToggleButton");
 			var ikModeToggleToggle = ikModeToggleButton.GetComponent<Toggle>();
 			if(Controller._IKModule != null)
-				ikModeToggleToggle.isOn = Controller._IKServoGroup == g.group;
+				ikModeToggleToggle.isOn = g.group.IKActive;
 			ikModeToggleToggle.onValueChanged.AddListener(v =>
 				{
 					if(v)
 					{
 						if(Controller._IKModule.SelectActiveGroup(g.group))
 						{
+							g.group.IKActive = true;
 							ToggleIKMode(g.group, true);
 							Controller._IKServoGroup = g.group;
 							UpdateIKButtons();
@@ -567,6 +588,7 @@ groupSpeed.onDeselect.AddListener(v => { InputLockManager.RemoveControlLock("IRC
 					}
 					else
 					{
+						g.group.IKActive = false;
 						Controller._IKModule.SelectActiveGroup(null);
 						ToggleIKMode(g.group, false);
 						Controller._IKServoGroup = null;
@@ -618,21 +640,22 @@ groupSpeed.onDeselect.AddListener(v => { InputLockManager.RemoveControlLock("IRC
 		{
 			var hlg = _servoGroupUIControls[g.group].GetChild("ServoGroupControlsHLG");
 
-			hlg.GetChild("ServoGroupMoveLeftToggleButton").SetActive(!active);
-			hlg.GetChild("ServoGroupMoveLeftButton").SetActive(!active);
-			hlg.GetChild("ServoGroupMoveCenterButton").SetActive(!active);
-			hlg.GetChild("ServoGroupMoveRightButton").SetActive(!active);
-			hlg.GetChild("ServoGroupMoveRightToggleButton").SetActive(!active);
+			hlg.GetChild("ServoGroupMoveLeftToggleButton").SetActive(!active && !guiFlightPresetModeOn);
+			hlg.GetChild("ServoGroupMoveLeftButton").SetActive(!active && !guiFlightPresetModeOn);
+			hlg.GetChild("ServoGroupMoveCenterButton").SetActive(!active && !guiFlightPresetModeOn);
+			hlg.GetChild("ServoGroupMoveRightButton").SetActive(!active && !guiFlightPresetModeOn);
+			hlg.GetChild("ServoGroupMoveRightToggleButton").SetActive(!active && !guiFlightPresetModeOn);
 
-		//	hlg.GetChild("ServoGroupMovePrevPresetButton").SetActive(!active);
-		//	hlg.GetChild("ServoGroupRevertButton").SetActive(!active);
-		//	hlg.GetChild("ServoGroupMoveNextPresetButton").SetActive(!active);
+			hlg.GetChild("ServoGroupMovePrevPresetButton").SetActive(!active && guiFlightPresetModeOn);
+			hlg.GetChild("ServoGroupRevertButton").SetActive(!active && guiFlightPresetModeOn);
+			hlg.GetChild("ServoGroupMoveNextPresetButton").SetActive(!active && guiFlightPresetModeOn);
 
+			hlg.GetChild("IKEndEffectorButton").SetActive(active);
+			hlg.GetChild("IKPositionVisibleButton").SetActive(active);
 			hlg.GetChild("IKLimiterButton").SetActive(active);
 			hlg.GetChild("IKDirectModeButton").SetActive(active);
 			hlg.GetChild("IKRelaxButton").SetActive(active);
-			hlg.GetChild("IKEndEffectorButton").SetActive(active);
-			hlg.GetChild("IKPositionVisibleButton").SetActive(active);
+			hlg.GetChild("IKTargetButton").SetActive(active);
 			hlg.GetChild("IKAction1Button").SetActive(active);
 			hlg.GetChild("IKAction2Button").SetActive(active);
 		}
@@ -863,8 +886,7 @@ groupSpeed.onDeselect.AddListener(v => { InputLockManager.RemoveControlLock("IRC
 
 		private void onSelectedPart(Part p)
 		{
-			_editorPartSelectorGroup.AddControl(p.GetComponent<ModuleIRServo_v3>(), -1);
-			_editorPartSelectorGroup.Refresh(true);
+			ServoGroup.AddControl(_editorPartSelectorGroup, p.GetComponent<ModuleIRServo_v3>(), -1);
 
 			_editorPartSelectorGroup = null;
 
@@ -971,11 +993,7 @@ groupSpeed.onDeselect.AddListener(v => { InputLockManager.RemoveControlLock("IRC
 					if(Controller.Instance.ServoGroups.Count > 1)
 					{
 						while(g.Servos.Any())
-						{
-							((ModuleIRServo_v3)g.Servos.First().servo).RemoveGroup(g.group);
-((ModuleIRServo_v3)g.Servos.First().servo).SerializeGroupNames(); // FEHLER, Quickfix
-							((ServoGroup)g.group).RemoveControl(g.Servos.First().servo);
-						}
+							ServoGroup.RemoveControl(g, g.Servos.First().servo, true, false);
 
 						Controller.Instance.ServoGroups.Remove(g.group);
 						g = null;
@@ -1261,9 +1279,7 @@ groupSpeed.onDeselect.AddListener(v => { InputLockManager.RemoveControlLock("IRC
 			var servoDeleteButton = newServoLine.GetChild("ServoDeleteButton").GetComponent<Button>();
 			servoDeleteButton.onClick.AddListener(() =>
 				{
-					((ModuleIRServo_v3)s.servo).RemoveGroup(g.group);
-((ModuleIRServo_v3)s.servo).SerializeGroupNames(); // FEHLER, Quickfix
-					((ServoGroup)g.group).RemoveControl(s.servo);
+					ServoGroup.RemoveControl(g, s, true);
 
 					Invalidate();
 				});
@@ -1479,7 +1495,10 @@ groupSpeed.onDeselect.AddListener(v => { InputLockManager.RemoveControlLock("IRC
 
 			// we need to turn off preset buttons and turn on normal buttons
 			foreach(var groupPair in _servoGroupUIControls)
-				SetGroupPresetControlsVisibility(groupPair.Value, value);
+			{
+				if(!groupPair.Key.group.IKActive)
+					SetGroupPresetControlsVisibility(groupPair.Value, value);
+			}
 			foreach(var servoPair in _servoUIControls)
 				SetServoPresetControlsVisibility(servoPair.ui, value);
 		}
@@ -1631,9 +1650,11 @@ groupSpeed.onDeselect.AddListener(v => { InputLockManager.RemoveControlLock("IRC
 
 		private void SetGroupPresetControlsVisibility(GameObject groupUIControls, bool value)
 		{
+			groupUIControls.GetChild("ServoGroupMoveLeftToggleButton").SetActive(!value);
 			groupUIControls.GetChild("ServoGroupMoveLeftButton").SetActive(!value);
 			groupUIControls.GetChild("ServoGroupMoveCenterButton").SetActive(!value);
 			groupUIControls.GetChild("ServoGroupMoveRightButton").SetActive(!value);
+			groupUIControls.GetChild("ServoGroupMoveRightToggleButton").SetActive(!value);
 
 			groupUIControls.GetChild("ServoGroupMovePrevPresetButton").SetActive(value);
 			groupUIControls.GetChild("ServoGroupRevertButton").SetActive(value);

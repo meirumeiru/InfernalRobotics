@@ -131,7 +131,7 @@ namespace InfernalRobotics_v3.Servo
 		{
 			// wait for next frame(s) so that all other functions did
 			// what they want to do with collision settings
-			int wait = 4;
+			int wait = 8;
 			while(--wait > 0)
 				yield return new WaitForFixedUpdate();
 

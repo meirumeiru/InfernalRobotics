@@ -410,7 +410,7 @@ namespace InfernalRobotics_v3.Module
 			else
 			{
 				// workaround (set the parent of one mesh to the connected body makes joints a lot stronger... maybe a bug?)
-				fixedMeshTransform = KSPUtil.FindInPartModel(transform, fixedMesh);
+				fixedMeshTransform = part.FindModelTransform(fixedMesh);
 
 				fixedMeshTransformParent = fixedMeshTransform.parent;
 				if(part.parent)
@@ -528,7 +528,7 @@ namespace InfernalRobotics_v3.Module
 			if((part.partInfo != null) && (part.partInfo.partPrefab != null))
 				OnRescale(scalingFactor);
 
-			isOnRails = (vessel != null) && vessel.packed; // FEHLER, neue Idee
+			isOnRails = (vessel != null) && vessel.packed;
 		}
 
 		public void OnVesselGoOnRails(Vessel v)
@@ -588,18 +588,15 @@ namespace InfernalRobotics_v3.Module
 			}
 		}
 
-static bool override1 = false; // FEHLER, temp, wegen DockingFunctions-Problem
-
 		public void OnVesselWasModified(Vessel v)
 		{
 			if(part.vessel == v)
 			{
-				if((part.attachJoint && part.attachJoint.Joint && (Joint != part.attachJoint.Joint))
-			|| override1)
+				if(part.attachJoint && part.attachJoint.Joint && (Joint != part.attachJoint.Joint))
 				{
 					Initialize1();
 				}
-				else // FEHLER, Idee... evtl. wurde ich abgehängt?? -> was mach ich bei "break" oder "die"?
+				else
 				{
 					if((part.parent == null) && (fixedMeshTransform != null))
 						fixedMeshTransform.parent = fixedMeshTransformParent;
@@ -634,8 +631,8 @@ static bool override1 = false; // FEHLER, temp, wegen DockingFunctions-Problem
 				_detachPosition = 0;
 			}
 
-			fixedMeshTransform = KSPUtil.FindInPartModel(transform, swap ? movingMesh : fixedMesh);
-			movingMeshTransform = KSPUtil.FindInPartModel(transform, swap ? fixedMesh : movingMesh);
+			fixedMeshTransform = part.FindModelTransform(swap ? movingMesh : fixedMesh);
+			movingMeshTransform = part.FindModelTransform(swap ? fixedMesh : movingMesh);
 
 			if(detachedAsRoot)
 			{
@@ -677,7 +674,7 @@ static bool override1 = false; // FEHLER, temp, wegen DockingFunctions-Problem
 		{
 			if(!editorRotated)
 			{
-				MoveChildren(commandedPosition); // FEHLER, CommandedPositionS ??
+				MoveChildren(swap ? -CommandedPositionS : CommandedPositionS);
 				editorRotated = true;
 			}
 		}
@@ -867,8 +864,8 @@ static bool override1 = false; // FEHLER, temp, wegen DockingFunctions-Problem
 		private void InitializeMeshes(bool bCorrectMeshPositions)
 		{
 			// find non rotating mesh
-			fixedMeshTransform = KSPUtil.FindInPartModel(transform, swap ? movingMesh : fixedMesh);
-			movingMeshTransform = KSPUtil.FindInPartModel(transform, swap ? fixedMesh : movingMesh);
+			fixedMeshTransform = part.FindModelTransform(swap ? movingMesh : fixedMesh);
+			movingMeshTransform = part.FindModelTransform(swap ? fixedMesh : movingMesh);
 
 			// find middle meshes (only for translational joints) -> the meshes that will be shown between the moving and fixed mesh
 			if(!isRotational && (middleMeshes.Length > 0))
@@ -876,7 +873,7 @@ static bool override1 = false; // FEHLER, temp, wegen DockingFunctions-Problem
 				string[] middleMeshesChunks = middleMeshes.Split('|');
 				List<Transform> _middleMeshesTransform = new List<Transform>();
 				for(int i = 0; i < middleMeshesChunks.Length; i++)
-					_middleMeshesTransform.Add(KSPUtil.FindInPartModel(transform, middleMeshesChunks[i]));
+					_middleMeshesTransform.Add(part.FindModelTransform(middleMeshesChunks[i]));
 				middleMeshesTransform = _middleMeshesTransform.ToArray();
 
 				if(swap)
@@ -901,13 +898,7 @@ static bool override1 = false; // FEHLER, temp, wegen DockingFunctions-Problem
 
 			if(HighLogic.LoadedSceneIsFlight)
 			{
-// FEHLER, wozu eigentlich?
-				fixedMeshAnchor = GameObject.CreatePrimitive(PrimitiveType.Cube);
-				fixedMeshAnchor.transform.localScale = new Vector3(0.001f, 0.001f, 0.001f);
-				fixedMeshAnchor.SetActive(true);
-
-				DestroyImmediate(fixedMeshAnchor.GetComponent<Collider>());
-				fixedMeshAnchor.GetComponent<Renderer>().enabled = false;
+				fixedMeshAnchor = new GameObject();
 
 				Rigidbody rb = fixedMeshAnchor.AddComponent<Rigidbody>();
 				rb.mass = 1e-6f;
@@ -921,6 +912,10 @@ static bool override1 = false; // FEHLER, temp, wegen DockingFunctions-Problem
 
 				FixedJoint fj = fixedMeshAnchor.AddComponent<FixedJoint>();
 				fj.connectedBody = ((Joint.gameObject == part.gameObject) ? Joint.connectedBody : part.rb);
+
+
+				fixedMeshTransform.gameObject.AddOrGetComponent<PartPointer>().SetPart(part);
+				movingMeshTransform.gameObject.AddOrGetComponent<PartPointer>().SetPart(part);
 			}
 		}
 
@@ -1222,7 +1217,7 @@ while(correction_1 < -360f) correction_1 += 360f;
 			if(mode == ModeType.servo)
 			{
 				if(isRotational)
-					Joint.angularXMotion = (isFreeMoving && !bUseDynamicLimitJoint) ? ConfigurableJointMotion.Limited : ConfigurableJointMotion.Free;
+					Joint.angularXMotion = (!isFreeMoving || bUseDynamicLimitJoint) ? ConfigurableJointMotion.Limited : ConfigurableJointMotion.Free;
 				else
 					Joint.xMotion = ConfigurableJointMotion.Limited;
 
@@ -1452,7 +1447,7 @@ while(correction_1 < -360f) correction_1 += 360f;
 				double amountToConsume = powerDrawRateBase * TimeWarp.fixedDeltaTime * 0.5f * (ip.NewSpeed + ip.Speed);
 // FEHLER, bei Beschleunigung zusätzlich Strom ziehen, dafür bei Bewegung nicht so sehr?
 
-				double amountConsumed = part.RequestResource(electricResource.id, amountToConsume);
+				double amountConsumed = part.RequestResource(electricResource.id, amountToConsume, false);
 
 				LastPowerDrawRate = (float)(1000f * amountConsumed / TimeWarp.fixedDeltaTime);
 
@@ -1474,7 +1469,7 @@ while(correction_1 < -360f) correction_1 += 360f;
 			{
 				double amountToConsume = powerDrawRateBase * TimeWarp.fixedDeltaTime * Math.Abs(Joint.targetAngularVelocity.x) * factorSpeed;
 
-				double amountConsumed = part.RequestResource(electricResource.id, amountToConsume);
+				double amountConsumed = part.RequestResource(electricResource.id, amountToConsume, false);
 
 				LastPowerDrawRate = (float)(1000f * amountConsumed / TimeWarp.fixedDeltaTime);
 
@@ -1775,14 +1770,19 @@ while(correction_1 < -360f) correction_1 += 360f;
 				return;
 			}
 
-// FEHLER, oder könnte das mit part.started geprüft werden? ... na, weiss nicht so recht... wobei, evtl. sollten wir das sonst zusätzlich prüfen?
-			if(!part || !part.vessel || !part.vessel.rootPart || !Joint)
+			if(!Joint)
 				return;
+
+			if(!part || !part.vessel || !part.vessel.rootPart)
+			{
+Logger.Log("das passiert wirklich!!", Logger.Level.Error); // FEHLER, prüfen, ob das wirklich passiert oder ob auf !Joint prüfen nicht reicht
+				return;
+			}
 
 			if(isOnRails && !trackSun)
 				return;
 
-			if(part.State == PartStates.DEAD) 
+			if((part.State == PartStates.DEAD) || (part.State == PartStates.FAILED))
 				return;
 
 			// ?? Bug in KSP ?? we need to reset this on every frame, because highliting the parent part (in some situations) sets this to another value
@@ -2441,7 +2441,8 @@ if(ip.isModulo) // deckt schon alles ab von wegen keine limits und kein minmax u
 				part.symmetryCounterparts[i].GetComponent<ModuleIRServo_v3>().PresetPositions = new List<float>(PresetPositions);
 		}
 
-// FEHLER, werden die je genutzt? und wenn nicht -> werden sie überall korrekt angewendet? weil, wären sie immer 0, würde das ja nicht auffallen...
+		// zeroNormal and zeroInvert allows to shift the default/neutral position of the model
+
 		[KSPField(isPersistant = false), SerializeField]
 		public float zeroNormal = 0;
 		[KSPField(isPersistant = false), SerializeField]
@@ -3336,18 +3337,20 @@ if(ip.isModulo) // deckt schon alles ab von wegen keine limits und kein minmax u
 
 //if(use2) deltaPosition = deltaPosition2;
 
+#if DEBUG
 
-ld.Draw(2, Joint.transform.position, Joint.transform.position + Quaternion.AngleAxis(trackAngle, part.transform.TransformVector(axis)) * part.transform.TransformVector(pointer) * 2);
-ld.Draw(3, Joint.transform.position, Joint.transform.position + part.transform.TransformVector(axis) * 2);
+ld.Draw(2, 2, Joint.transform.position, Joint.transform.position + Quaternion.AngleAxis(trackAngle, part.transform.TransformVector(axis)) * part.transform.TransformVector(pointer) * 2);
+ld.Draw(3, 3, Joint.transform.position, Joint.transform.position + part.transform.TransformVector(axis) * 2);
 
-ld.Draw(5, Joint.transform.position, Joint.transform.position + toSun * 2);
+ld.Draw(5, 5, Joint.transform.position, Joint.transform.position + toSun * 2);
 
 
-ld.Draw(6, Joint.transform.position, Joint.transform.position +
+ld.Draw(6, 6, Joint.transform.position, Joint.transform.position +
 part.transform.rotation * Quaternion.AngleAxis(deltaPosition, part.transform.TransformVector(axis))
 * pointer * 2);
 	// das erwarte ich irgendwie... oder?
 
+#endif
 
 			if(swap)
 				deltaPosition = -deltaPosition;
@@ -3745,8 +3748,8 @@ float _tgtSpeed2 = Mathf.Clamp(_tgtSpeed, 0.005f, speedLimit);
 		public void EditorMiniInit()
 		{
 			// find non rotating mesh
-			fixedMeshTransform = KSPUtil.FindInPartModel(transform, swap ? movingMesh : fixedMesh);
-			movingMeshTransform = KSPUtil.FindInPartModel(transform, swap ? fixedMesh : movingMesh);
+			fixedMeshTransform = part.FindModelTransform(swap ? movingMesh : fixedMesh);
+			movingMeshTransform = part.FindModelTransform(swap ? fixedMesh : movingMesh);
 		}
 
 		public void EditorReset()
@@ -4404,8 +4407,6 @@ float _tgtSpeed2 = Mathf.Clamp(_tgtSpeed, 0.005f, speedLimit);
 		private void onChanged_activateCollisions(object o)
 		{
 			GameEvents.OnCollisionIgnoreUpdate.Fire();
-
-// FEHLER, nicht nur senden, sondern noch drauf achten? -> wie auch immer, aber die Kollisionen scheinen beim Laden nicht erneut gesetzt zu werden oder sowas... irgendwas stimmt nicht ganz -> klären, kann sein, dass meine Info auch falsch ist und alles ok ist -> nach Docking, wie ist es da? z.B. ...
 		}
 
 		////////////////////////////////////////
@@ -4455,11 +4456,10 @@ float _tgtSpeed2 = Mathf.Clamp(_tgtSpeed, 0.005f, speedLimit);
 				deltaPosition = commandedPosition - deltaPosition;
 				transform.Translate(axis.normalized * deltaPosition);
 
-// FEHLER, temp, mal sehen wieso das nötig ist
-if(fixedMeshTransform != null)
+				if(fixedMeshTransform != null)
 				{
-			fixedMeshTransform.localPosition = Vector3.zero;
-			fixedMeshTransform.Translate(axis.normalized * (-commandedPosition));
+					fixedMeshTransform.localPosition = Vector3.zero;
+					fixedMeshTransform.Translate(axis.normalized * (-commandedPosition));
 				}
 			}
 
@@ -4515,7 +4515,7 @@ if(fixedMeshTransform != null)
 		string IModuleInfo.GetInfo()
 		{
 			if(isFreeMoving)
-				return "free moving";
+				return "<color=#6DCFF6>Modes:</color>\n- free moving\n";
 
 			if(availableModes == null)
 				ParseAvailableModes();
@@ -4525,42 +4525,43 @@ if(fixedMeshTransform != null)
 
 			string info = "";
 
-			for(int i = 0; i < availableModes.Count; i++)
+			if(availableModes.Count > 0)
 			{
-				switch(availableModes[i])
+				info += "<color=#6DCFF6>Modes:</color>\n";
+
+				for(int i = 0; i < availableModes.Count; i++)
 				{
-				case ModeType.servo:
-					for(int j = 0; j < availableInputModes.Count; j++)
+					switch(availableModes[i])
 					{
-						switch(availableInputModes[j])
+					case ModeType.servo:
+						for(int j = 0; j < availableInputModes.Count; j++)
 						{
-						case InputModeType.manual:
-							if(info.Length > 0) info += "\n";
-							info += "servo mode";
-							break;
-						case InputModeType.control:
-							if(info.Length > 0) info += "\n";
-							info += "control mode";
-							break;
-						case InputModeType.linked:
-							break;
-						case InputModeType.tracking:
-							if(info.Length > 0) info += "\n";
-							info += "sun tracking mode";
-							break;
+							switch(availableInputModes[j])
+							{
+							case InputModeType.manual:
+								info += "- servo\n";
+								break;
+							case InputModeType.control:
+								info += "- control\n";
+								break;
+							case InputModeType.linked:
+								info += "- linked\n";
+								break;
+							case InputModeType.tracking:
+								info += "- sun tracking\n";
+								break;
+							}
 						}
+						break;
+
+					case ModeType.rotor:
+						info += "- rotor\n";
+						break;
 					}
-					break;
-
-				case ModeType.rotor:
-					if(info.Length > 0) info += "\n";
-					info += "rotor mode";
-					break;
 				}
-			}
 
-			if(info.Length > 0)
-				info += "\n\n";
+				info += "\n";
+			}
 
 			info += "<b><color=orange>Requires:</color></b>\n- <b>Electric Charge: </b>when moving";
 
@@ -4725,17 +4726,17 @@ if(fixedMeshTransform != null)
 
 		private void DrawPointer(int idx, Vector3 p_vector)
 		{
-			ld.Draw(idx, Vector3.zero, p_vector);
+			ld.Draw(idx, idx, Vector3.zero, p_vector);
 		}
 
 		public void DrawRelative(int idx, Vector3 p_from, Vector3 p_vector)
 		{
-			ld.Draw(idx, p_from, p_from + p_vector);
+			ld.Draw(idx, idx, p_from, p_from + p_vector);
 		}
 
 		private void DrawAxis(int idx, Transform p_transform, Vector3 p_vector, bool p_relative, Vector3 p_off)
 		{
-			ld.Draw(idx, p_transform.position + p_off, p_transform.position + p_off
+			ld.Draw(idx, idx, p_transform.position + p_off, p_transform.position + p_off
 				+ (p_relative ? p_transform.TransformDirection(p_vector) : p_vector));
 		}
 

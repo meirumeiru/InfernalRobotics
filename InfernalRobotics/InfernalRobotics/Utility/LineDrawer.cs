@@ -60,45 +60,55 @@ namespace InfernalRobotics_v3.Utility
 
 	public class MultiLineDrawer
 	{
-		public LineDrawer[] al = new LineDrawer[13];
-		public Color[] alColor = new Color[13];
+		public LineDrawer[] al;
 
-		public void Create(Transform t)
+		public void Create(Transform t, int count = 13)
 		{
-			for(int i = 0; i < 13; i++)
-				al[i] = new LineDrawer(t);
+			al = new LineDrawer[count];
 
-			alColor[0] = Color.red;
-			alColor[1] = Color.green;
-			alColor[2] = Color.yellow;
-			alColor[3] = Color.magenta; // axis
-			alColor[4] = Color.blue;    // secondaryAxis
-			alColor[5] = Color.white;
-			alColor[6] = new Color(255.0f / 255.0f, 128.0f / 255.0f, 0f / 255.0f);
-			alColor[7] = new Color(0f / 255.0f, 128.0f / 255.0f, 0f / 255.0f);
-			alColor[8] = new Color(0f / 255.0f, 255.0f / 255.0f, 255.0f / 255.0f);
-			alColor[9] = new Color(128.0f / 255.0f, 0f / 255.0f, 255.0f / 255.0f);
-			alColor[10] = new Color(255.0f / 255.0f, 0f / 255.0f, 128.0f / 255.0f);
-			alColor[11] = new Color(0f / 255.0f, 0f / 255.0f, 128.0f / 255.0f);
-			alColor[12] = new Color(128.0f / 255.0f, 0f / 255.0f, 128.0f / 255.0f);
+			for(int i = 0; i < al.Length; i++)
+				al[i] = new LineDrawer(t);
 		}
 
 		public void Destroy()
 		{
-			for(int i = 0; i < 13; i++)
+			for(int i = 0; i < al.Length; i++)
 				al[i].Destroy();
+
+			al = null;
 		}
 
 		// draws the line through the provided vertices
-		public void Draw(int color, Vector3 start, Vector3 end)
+		public void Draw(int idx, int color, Vector3 start, Vector3 end)
 		{
-			al[color].Draw(start, end, alColor[color]);
+			Color clr;
+
+			switch(color)
+			{
+			case 0: clr = Color.red; break;
+			case 1: clr = Color.green; break;
+			case 2: clr = Color.yellow; break;
+			case 3: clr = Color.magenta; break;
+			case 4: clr = Color.blue; break;
+			case 5: clr = Color.white; break;
+			case 6: clr = new Color(255.0f / 255.0f, 128.0f / 255.0f, 0.0f / 255.0f); break;
+			case 7: clr = new Color(0.0f / 255.0f, 128.0f / 255.0f, 0.0f / 255.0f); break;
+			case 8: clr = new Color(0.0f / 255.0f, 255.0f / 255.0f, 255.0f / 255.0f); break;
+			case 9: clr = new Color(128.0f / 255.0f, 0.0f / 255.0f, 255.0f / 255.0f); break;
+			case 10: clr = new Color(255.0f / 255.0f, 0.0f / 255.0f, 128.0f / 255.0f); break;
+			case 11: clr = new Color(0.0f / 255.0f, 0.0f / 255.0f, 128.0f / 255.0f); break;
+			case 12: clr = new Color(128.0f / 255.0f, 0.0f / 255.0f, 128.0f / 255.0f); break;
+			default: clr = Color.black; break;
+			}
+
+			clr.a = 0.7f;
+			al[idx].Draw(start, end, clr);
 		}
 
 		// hides the line
-		public void Hide(int color)
+		public void Hide(int idx)
 		{
-			al[color].Hide();
+			al[idx].Hide();
 		}
 
 		// hides all lines

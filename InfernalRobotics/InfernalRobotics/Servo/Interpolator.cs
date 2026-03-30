@@ -225,7 +225,7 @@ namespace InfernalRobotics_v3.Servo
 			oldPosition += p_delta;
 		}
 	
-// FEHLER, mehrere Verfahren einführen für diverse Move-Types
+		// OPTION: use different algorithms for different move-types
 		public void OvershootProtection(float p_deltaTime)
 		{
 			// -> factor 0.97 to prevent an overshoot better

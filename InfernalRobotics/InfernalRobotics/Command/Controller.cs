@@ -34,7 +34,7 @@ namespace InfernalRobotics_v3.Command
 		public static IIKModule _IKModule;
 		public static IServoGroup _IKServoGroup;
 
-		public static List<ServoGroup.Settings> ServoGroupSettings;		// FEHLER, muss echt static sein, weil der Idiot beim Revert ins VAB kein neues OnLoad aufruft und somit alle meine Settings flöten gehen...
+		public static List<ServoGroup.Settings> ServoGroupSettings; // needs to be static to keep the settings available when reverting to VAB/SPH, because we don't get a new OnLoad in this case
 		public List<IServoGroup> ServoGroups;
 
 		private class IServoState { public bool bIsBuildAidOn = false; }
@@ -53,16 +53,6 @@ namespace InfernalRobotics_v3.Command
 		}
 
 		public static bool APIReady { get { return ControllerInstance != null && ControllerInstance.servosState != null && ControllerInstance.servosState.Count > 0; } }
-
-		public static void MoveServo(IServoGroup from, IServoGroup to, int index, IServo servo)
-		{
-			((ModuleIRServo_v3)servo.servo).RemoveGroup(from.group);
-			((ServoGroup)from.group).RemoveControl(servo);
-			((ServoGroup)to.group).AddControl(servo, index);
-
-			((ServoGroup)from.group).Refresh(true);
-			((ServoGroup)to.group).Refresh(true);
-		}
 
 		private static void EditorAddServo(IServo servo)
 		{
@@ -95,8 +85,7 @@ namespace InfernalRobotics_v3.Command
 				{
 					if(groups.Contains(g.Name))
 					{
-						g.AddControl(servo, -1);
-						g.Refresh(true);
+						ServoGroup.AddControl(g, servo, -1);
 
 						groups.Remove(g.Name);
 					}
@@ -110,9 +99,10 @@ namespace InfernalRobotics_v3.Command
 					settings.reverseKey = "";
 					settings.groupSpeedFactor = 1;
 
-					ServoGroup g = new ServoGroup(servo, settings);
+					ServoGroup g = new ServoGroup(settings);
 					Instance.ServoGroups.Add(g);
-					g.Refresh(true);
+
+					ServoGroup.AddControl(g, servo, 0);
 
 					groups.RemoveAt(0);
 				}
@@ -138,11 +128,7 @@ namespace InfernalRobotics_v3.Command
 				ServoGroup g = (ServoGroup)Instance.ServoGroups[i].group;
 
 				if(g.Contains(servo))
-				{
-					g.RemoveControl(servo);
-((ModuleIRServo_v3)servo).SerializeGroupNames(); // FEHLER, Quickfix
-					g.Refresh(true);
-				}
+					ServoGroup.RemoveControl(g, servo, false);
 			}
 
 			((ModuleIRServo_v3)servo).GroupPositions.Clear();
@@ -251,18 +237,15 @@ namespace InfernalRobotics_v3.Command
 				kv.Value.Sort(CompareServoWithIndex);
 
 				foreach(ServoWithIndex si in kv.Value)
-					g.AddControl(si.servo, -1);
+					ServoGroup.AddControl(g, si.servo, -1, false);
 
-				g.Refresh(false);
+				ServoGroup.UpdateGroup(g);
 			}
 
 			RefreshServoGroupSettings();
 
 			if(ServoGroups.Count == 0)
 				ServoGroups = null;
-
-			if((_IKServoGroup != null) && !ServoGroups.Contains(_IKServoGroup))
-				_IKServoGroup = null;
 
 			if(Gui.WindowManager.Instance != null)
 				Gui.WindowManager.Instance.Invalidate();
@@ -301,128 +284,122 @@ namespace InfernalRobotics_v3.Command
 			Dictionary<IServo, IServoState> oldServoState = (Instance.servosState != null) ? Instance.servosState : new Dictionary<IServo, IServoState>();
 			servosState = new Dictionary<IServo, IServoState>();
 
-bool somethingChanged = false;
-List<IServoGroup> oldServoGroups = ServoGroups;
+			List<IServoGroup> oldServoGroups = (ServoGroups != null) ? ServoGroups : new List<IServoGroup>();
 			ServoGroups = new List<IServoGroup>();
 
-//			if(_IKModule != null)
-//				_IKModule.Reset(); // FEHLER, ist doof, evtl. erst später machen, wenn die Gruppe wirklich rausfällt?
+			bool bNewGroups = false;
 
-			for(int i = 0; i < FlightGlobals.Vessels.Count; i++)
+			IServoGroup ikGroup = null;
+
+			var vessel = FlightGlobals.ActiveVessel;
+
+			var groupServos = new Dictionary<string, List<ServoWithIndex>>();
+
+			foreach(var servo in vessel.ToServos())
 			{
-				var vessel = FlightGlobals.Vessels[i];
+				IServoState state;
+				if(oldServoState.TryGetValue(servo, out state))
+					servosState.Add(servo, state);
+				else
+					servosState.Add(servo, new IServoState());
 
-				if(!vessel.loaded)
-					continue;
+				ModuleIRServo_v3 s = (ModuleIRServo_v3)servo;
 
-if(vessel != FlightGlobals.ActiveVessel)
-	continue; // FEHLER, aber... ich will doch sowieso nur das aktive steuern, oder nicht?
-
-				var groupServos = new Dictionary<string, List<ServoWithIndex>>();
-
-				foreach(var servo in vessel.ToServos())
+				if(!string.IsNullOrEmpty(s.groupName))
 				{
-					IServoState state;
-					if(oldServoState.TryGetValue(servo, out state))
-						servosState.Add(servo, state);
-					else
-						servosState.Add(servo, new IServoState());
+					List<string> groups = new List<string>(s.groupName.Split('|'));
 
-					ModuleIRServo_v3 s = (ModuleIRServo_v3)servo;
-
-					if(!string.IsNullOrEmpty(s.groupName))
+					foreach(string group in groups)
 					{
-						List<string> groups = new List<string>(s.groupName.Split('|'));
+						string[] gi = group.Split(';');
 
-						foreach(string group in groups)
+						List<ServoWithIndex> servos;
+						if(!groupServos.TryGetValue(gi[0], out servos))
 						{
-							string[] gi = group.Split(';');
-
-							List<ServoWithIndex> servos;
-							if(!groupServos.TryGetValue(gi[0], out servos))
-							{
-								servos = new List<ServoWithIndex>();
-								groupServos.Add(gi[0], servos);
-							}
-
-							ServoWithIndex si = new ServoWithIndex();
-							si.servo = servo; si.index = (gi.Length > 1) ? int.Parse(gi[1]) : -1;
-
-							servos.Add(si);
+							servos = new List<ServoWithIndex>();
+							groupServos.Add(gi[0], servos);
 						}
-					}
-				}
 
-				foreach(var kv in groupServos)
-				{
-					kv.Value.Sort(CompareServoWithIndex);
+						ServoWithIndex si = new ServoWithIndex();
+						si.servo = servo; si.index = (gi.Length > 1) ? int.Parse(gi[1]) : -1;
 
-					ServoGroup gg = null;
-
-// FEHLER, hier alte Gruppe finden
-if(oldServoGroups != null)
-{
-for(int j = 0; j < oldServoGroups.Count; j++)
-{
-	ServoGroup go = (ServoGroup)oldServoGroups[j];
-
-	if(go.Name != (string)kv.Key)
-		continue;
-
-	if(go.Servos.Count != kv.Value.Count)
-		continue;
-
-	int k = 0;
-	
-	while((k < go.Servos.Count) && (go.Servos[k].HostPart.flightID == kv.Value[k].servo.HostPart.flightID))
-		++k;
-
-	if(k < go.Servos.Count)
-		continue;
-
-	// sonst gefunden !!!
-
-	gg = go;
-
-	oldServoGroups.RemoveAt(j);
-	break;
-}
-}
-
-					if(gg != null)
-						ServoGroups.Add(gg);
-					else
-					{
-somethingChanged = true;
-
-						ServoGroup g = new ServoGroup(vessel, FindOrCreateServoGroupSettings((string)kv.Key));
-						ServoGroups.Add(g);
-
-						foreach(ServoWithIndex si in kv.Value)
-							g.AddControl(si.servo, -1);
-
-						g.Refresh(false);
+						servos.Add(si);
 					}
 				}
 			}
 
-if(somethingChanged || (oldServoGroups.Count > 0))
-{
-			RefreshServoGroupSettings();
+			foreach(var kv in groupServos)
+			{
+				kv.Value.Sort(CompareServoWithIndex);
 
-			if(ServoGroups.Count == 0)
-				ServoGroups = null;
+				ServoGroup g = null;
 
-			if(_IKModule != null)
-				_IKModule.Reset();
+				// find existing group in old groups
+				for(int j = 0; (j < oldServoGroups.Count) && (g == null); j++)
+				{
+					ServoGroup o = (ServoGroup)oldServoGroups[j];
 
-			if((_IKServoGroup != null) && !ServoGroups.Contains(_IKServoGroup))
-				_IKServoGroup = null;
+					if(o.Name != (string)kv.Key)
+						continue;
 
-			if(Gui.WindowManager.Instance != null)
-				Gui.WindowManager.Instance.Invalidate();
-}
-// FEHLER, IK evtl. doch resetten, weil, wenn sich was verdreht hätte?... evtl. nötig? oder nicht?
+					if(o.Servos.Count != kv.Value.Count)
+						continue;
+
+					int k = 0;
+					while((k < o.Servos.Count) && (o.Servos[k].HostPart.flightID == kv.Value[k].servo.HostPart.flightID))
+						++k;
+
+					if(k < o.Servos.Count)
+						continue;
+
+					oldServoGroups.RemoveAt(j);
+					g = o;
+				}
+
+				if(g != null)
+				{
+					ServoGroups.Add(g);
+
+					if(g.IKActive)
+						ikGroup = g;
+				}
+				else
+				{
+					bNewGroups = true;
+
+					g = new ServoGroup(vessel, FindOrCreateServoGroupSettings((string)kv.Key));
+					ServoGroups.Add(g);
+
+					foreach(ServoWithIndex si in kv.Value)
+						ServoGroup.AddControl(g, si.servo, -1, false);
+
+					ServoGroup.UpdateGroup(g);
+				}
+			}
+
+			if(bNewGroups || (oldServoGroups.Count > 0))
+			{
+				RefreshServoGroupSettings();
+
+				if(ServoGroups.Count == 0)
+					ServoGroups = null;
+
+				if(_IKModule != null)
+				{
+					_IKModule.Reset();
+
+					if(ikGroup != null)
+						_IKModule.SelectActiveGroup(ikGroup);
+					else
+					{
+						_IKModule.SelectActiveGroup(null);
+						_IKServoGroup = null;
+					}
+				}
+
+				if(Gui.WindowManager.Instance != null)
+					Gui.WindowManager.Instance.Invalidate();
+			}
 		}
 
 		private void OnEditorPartAttach(Part part)
@@ -506,7 +483,7 @@ if(somethingChanged || (oldServoGroups.Count > 0))
 
 		private void OnVesselWasModified(Vessel v)
 		{
-			RebuildServoGroupsFlight();	// FEHLER, wird ausgelöst durch DockingFunctions, wenn er ein Redock macht... das ist etwas doof... aber soll ich jetzt hier auf DockingFunctions-Sachen hören und das hier dann ignorieren?
+			RebuildServoGroupsFlight();
 		}
 
 		private void OnVesselLoaded(Vessel v)

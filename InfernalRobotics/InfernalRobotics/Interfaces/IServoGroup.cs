@@ -79,5 +79,10 @@ namespace InfernalRobotics_v3.Interfaces
 		// BuildAid
 
 		bool BuildAid { get; set; }
+
+		////////////////////////////////////////
+		// IK
+
+		bool IKActive { get; set; }
 	}
 }
