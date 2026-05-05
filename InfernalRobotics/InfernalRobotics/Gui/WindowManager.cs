@@ -221,7 +221,7 @@ namespace InfernalRobotics_v3.Gui
 
 		private void OnChangeControllable(Vessel v, bool controllable)
 		{
-			bool enabled = (v.CurrentControlLevel > Vessel.ControlLevel.NONE);
+		//	controllable = (v.CurrentControlLevel > Vessel.ControlLevel.NONE);
 
 			foreach(var pair in _servoGroupUIControls)
 			{
@@ -551,7 +551,7 @@ namespace InfernalRobotics_v3.Gui
 			ikDirectModeTooltip.tooltipText = "Direct Mode";
 
 			var ikRelaxButton = hlg.GetChild("IKRelaxButton").GetComponent<Button>();
-			ikRelaxButton.onClick.AddListener(() => { Controller._IKModule.Relax(g.group, 50); });
+			ikRelaxButton.onClick.AddListener(() => { Controller.Instance.Relax(g.group, 50); });
 
 			var ikRelaxTooltip = ikRelaxButton.gameObject.AddComponent<BasicTooltip>();
 			ikRelaxTooltip.tooltipText = "Relax";
@@ -654,7 +654,7 @@ namespace InfernalRobotics_v3.Gui
 			hlg.GetChild("IKPositionVisibleButton").SetActive(active);
 			hlg.GetChild("IKLimiterButton").SetActive(active);
 			hlg.GetChild("IKDirectModeButton").SetActive(active);
-			hlg.GetChild("IKRelaxButton").SetActive(active);
+			hlg.GetChild("IKRelaxButton").SetActive(active || !guiFlightPresetModeOn);
 			hlg.GetChild("IKTargetButton").SetActive(active);
 			hlg.GetChild("IKAction1Button").SetActive(active);
 			hlg.GetChild("IKAction2Button").SetActive(active);
@@ -1010,7 +1010,7 @@ namespace InfernalRobotics_v3.Gui
 			{
 				var s = g.Servos[j];
 
-				if(s.IsFreeMoving || !s.IsServo)
+				if(/*s.IsFreeMoving ||*/ !s.IsServo)
 					continue;
 
 				var newServoLine = GameObject.Instantiate(UIAssetsLoader.editorWindowServoLinePrefab);
@@ -1659,6 +1659,8 @@ namespace InfernalRobotics_v3.Gui
 			groupUIControls.GetChild("ServoGroupMovePrevPresetButton").SetActive(value);
 			groupUIControls.GetChild("ServoGroupRevertButton").SetActive(value);
 			groupUIControls.GetChild("ServoGroupMoveNextPresetButton").SetActive(value);
+
+			groupUIControls.GetChild("IKRelaxButton").SetActive(!value);
 		}
 
 		private void SetServoPresetControlsVisibility(GameObject servoUIControls, bool value)
@@ -1758,8 +1760,15 @@ namespace InfernalRobotics_v3.Gui
 				foreach(Vessel v in FlightGlobals.VesselsLoaded)
 					OnChangeControllable(v, v.IsControllable);
 
-				if((Controller._IKModule != null) && (Controller._IKServoGroup != null))
-					ToggleIKMode(Controller._IKServoGroup, true);
+// FEHLER, doof, weil, dann setzen wir den Status nicht korrekt auf einige -> gut, der müsste halt im Prefab stimmen, tut er aber nicht im Moment... -> daher das nächste if statt dem hier -> temp?
+	//			if((Controller._IKModule != null) && (Controller._IKServoGroup != null))
+	//				ToggleIKMode(Controller._IKServoGroup, true);
+
+				if(Controller._IKModule != null)
+				{
+					foreach(var v in _servoGroupUIControls)
+						ToggleIKMode(v.Key, v.Key == Controller._IKServoGroup);
+				}
 
 				UpdateIKButtons();
 			}

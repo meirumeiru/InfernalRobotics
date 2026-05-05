@@ -276,8 +276,9 @@ namespace InfernalRobotics_v3.Command
 
 		internal IEnumerator _RebuildServoGroupsFlight()
 		{
-			yield return new WaitForFixedUpdate();
-			yield return new WaitForFixedUpdate(); // would most likely also work with just one WaitForFixedUpdate but it doesn't hurt to wait longer
+			int w = 8;
+			while(--w > 0)
+				yield return new WaitForFixedUpdate();
 
 			bRebuildingServoGroupsFlight = false;
 
@@ -358,6 +359,8 @@ namespace InfernalRobotics_v3.Command
 
 				if(g != null)
 				{
+					g.Vessel = g.Servos[0].HostPart.vessel; // update vessel in group
+
 					ServoGroups.Add(g);
 
 					if(g.IKActive)
@@ -389,7 +392,25 @@ namespace InfernalRobotics_v3.Command
 					_IKModule.Reset();
 
 					if(ikGroup != null)
-						_IKModule.SelectActiveGroup(ikGroup);
+					{
+						if(_IKServoGroup != null)
+						{
+							Vector3 p; Quaternion q;
+							_IKModule.GetTarget(_IKServoGroup, out p, out q);
+
+							_IKModule.SelectActiveGroup(null);
+							_IKModule.SelectActiveGroup(ikGroup);
+							_IKServoGroup = ikGroup;
+
+							_IKModule.SetTarget(_IKServoGroup, p, q);
+						}
+						else
+						{
+							_IKModule.SelectActiveGroup(null);
+							_IKModule.SelectActiveGroup(ikGroup);
+							_IKServoGroup = ikGroup;
+						}
+					}
 					else
 					{
 						_IKModule.SelectActiveGroup(null);
@@ -399,6 +420,29 @@ namespace InfernalRobotics_v3.Command
 
 				if(Gui.WindowManager.Instance != null)
 					Gui.WindowManager.Instance.Invalidate();
+			}
+			else
+			{
+				if((_IKModule != null) && (ikGroup != null))
+				{
+					if(_IKServoGroup != null)
+					{
+						Vector3 p; Quaternion q;
+						_IKModule.GetTarget(_IKServoGroup, out p, out q);
+
+						_IKModule.SelectActiveGroup(null);
+						_IKModule.SelectActiveGroup(ikGroup);
+						_IKServoGroup = ikGroup;
+
+						_IKModule.SetTarget(_IKServoGroup, p, q);
+					}
+					else
+					{
+						_IKModule.SelectActiveGroup(null);
+						_IKModule.SelectActiveGroup(ikGroup);
+						_IKServoGroup = ikGroup;
+					}
+				}
 			}
 		}
 
@@ -590,7 +634,7 @@ namespace InfernalRobotics_v3.Command
 					return pair.Value;
 			}
 
-			IServoInterceptor interceptor = new IServoInterceptor(servo);
+			ServoInterceptor interceptor = new ServoInterceptor(servo);
 
 			_ServoToServoInterceptor.Add(servo, interceptor);
 
@@ -611,7 +655,7 @@ namespace InfernalRobotics_v3.Command
 					return pair.Value;
 			}
 
-			IServoGroupInterceptor interceptor = new IServoGroupInterceptor(group);
+			ServoGroupInterceptor interceptor = new ServoGroupInterceptor(group);
 
 			_ServoGroupToServoGroupInterceptor.Add(group, interceptor);
 
@@ -629,6 +673,36 @@ namespace InfernalRobotics_v3.Command
 		public void ServoBuildAid(IServo s, bool v)
 		{
 			servosState[s.servo].bIsBuildAidOn = v;
+		}
+
+		////////////////////////////////////////
+		// Relax
+
+		public void Relax(IServoGroup g, int factor)
+		{
+			if((_IKModule != null) && (_IKServoGroup == g))
+				_IKModule.Relax(g, factor);
+			else
+				StartCoroutine(RelaxGroup(g, factor));
+		}
+
+		private IEnumerator RelaxGroup(IServoGroup g, int factor)
+		{
+			foreach(IServo s in g.Servos)
+				s.SetRelaxMode(1f);
+
+			int i = factor;
+
+			while(i-- > 0)
+			{
+				foreach(IServo s in g.Servos)
+					s.RelaxStep();
+
+				yield return new WaitForFixedUpdate();
+			}
+
+			foreach(IServo s in g.Servos)
+				s.ResetRelaxMode();
 		}
 	}
 
@@ -689,8 +763,7 @@ namespace InfernalRobotics_v3.Command
 					++j;
 
 				if(j < Controller.ServoGroupSettings.Count)
-					Controller.ServoGroupSettings.RemoveAt(j); // FEHLER, neue Idee -> wir müssen alles liegen lassen, daher werden wir neu immer nur die zuletzt geladene Version verwenden
-				//	continue; // already loaded
+					Controller.ServoGroupSettings.RemoveAt(j);
 
 				ServoGroup.Settings h = new ServoGroup.Settings();
 

@@ -7,28 +7,28 @@ using InfernalRobotics_v3.Interfaces;
 
 namespace InfernalRobotics_v3.Interceptors
 {
-	public class IServoInterceptor : IServo
+	public class ServoInterceptor : IServo
 	{
 		private IServo s;
 
-		private IPresetableInterceptor p;
+		private PresetableInterceptor p;
 
 		public static IServo BuildInterceptor(IServo servo)
 		{
 			if(CommNet.CommNetScenario.CommNetEnabled
 			&& HighLogic.CurrentGame.Parameters.CustomParams<CommNet.CommNetParams>().requireSignalForControl)
-				return new IServoInterceptor(servo);
+				return new ServoInterceptor(servo);
 
 			// OPTION: build two different interceptor classes and return the "flight" or the "editor" interceptor instead of doing the if-desicion in many functions
 	
 			return servo;
 		}
 	
-		public IServoInterceptor(IServo servo)
+		public ServoInterceptor(IServo servo)
 		{
 			s = servo;
 
-			p = new IPresetableInterceptor(s.Presets);
+			p = new PresetableInterceptor(s.Presets);
 		}
 
 		public IServo servo

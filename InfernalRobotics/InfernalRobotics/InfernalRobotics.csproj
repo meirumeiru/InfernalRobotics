@@ -94,10 +94,10 @@
     <Compile Include="Gui\GroupDropHandler.cs" />
     <Compile Include="Gui\HoldButton.cs" />
     <Compile Include="Gui\BasicTooltip.cs" />
-    <Compile Include="Interceptors\Limiter.cs" />
-    <Compile Include="Interceptors\IPresetableInterceptor.cs" />
-    <Compile Include="Interceptors\IServoGroupInterceptor.cs" />
-    <Compile Include="Interceptors\IServoInterceptor.cs" />
+    <Compile Include="Servo\Limiter.cs" />
+    <Compile Include="Interceptors\PresetableInterceptor.cs" />
+    <Compile Include="Interceptors\ServoGroupInterceptor.cs" />
+    <Compile Include="Interceptors\ServoInterceptor.cs" />
     <Compile Include="Gui\PanelResizer.cs" />
     <Compile Include="Gui\ServoDragHandler.cs" />
     <Compile Include="Gui\ServoDropHandler.cs" />
@@ -129,7 +129,6 @@
     <Compile Include="Utility\Logger.cs" />
     <Compile Include="Utility\PartSelector.cs" />
     <Compile Include="Utility\ServoHelper.cs" />
-    <Compile Include="Utility\TextureLoader.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.

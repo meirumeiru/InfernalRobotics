@@ -213,7 +213,7 @@ namespace InfernalRobotics_v3.Utility
 			ModuleIRServo_v3 s = part.GetComponent<ModuleIRServo_v3>();
 
 			if(s)
-				localRotation = s.CalculateNeutralRotation(localRotation);
+				localRotation = s.EditorCalculateNeutralRotation(localRotation);
 
 			position = part.transform.localPosition + localRotation * position;
 			rotation = localRotation * rotation;
@@ -306,8 +306,8 @@ namespace InfernalRobotics_v3.Utility
 
 			if(s)
 			{
-				localRotation = s.CalculateNeutralRotation(localRotation);
-				s._RotateBack(attachNode);
+				localRotation = s.EditorCalculateNeutralRotation(localRotation);
+				s.EditorRotateBack(attachNode);
 			}
 		}
 
@@ -317,7 +317,7 @@ namespace InfernalRobotics_v3.Utility
 
 			if(s)
 			{
-				localRotation = s.CalculateFinalRotation(localRotation);
+				localRotation = s.EditorCalculateFinalRotation(localRotation);
 			}
 		}
 

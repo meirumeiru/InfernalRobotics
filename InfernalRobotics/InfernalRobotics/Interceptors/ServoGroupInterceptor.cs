@@ -6,7 +6,7 @@ using InfernalRobotics_v3.Command;
 
 namespace InfernalRobotics_v3.Interceptors
 {
-	public class IServoGroupInterceptor : IServoGroup
+	public class ServoGroupInterceptor : IServoGroup
 	{
 		private IServoGroup g;
 
@@ -14,12 +14,12 @@ namespace InfernalRobotics_v3.Interceptors
 		{
 			if(CommNet.CommNetScenario.CommNetEnabled
 			&& HighLogic.CurrentGame.Parameters.CustomParams<CommNet.CommNetParams>().requireSignalForControl)
-				return new IServoGroupInterceptor(group);
+				return new ServoGroupInterceptor(group);
 
 			return group;
 		}
 	
-		public IServoGroupInterceptor(IServoGroup group)
+		public ServoGroupInterceptor(IServoGroup group)
 		{
 			g = group;
 		}

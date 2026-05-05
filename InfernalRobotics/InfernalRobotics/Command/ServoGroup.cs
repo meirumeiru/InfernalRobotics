@@ -111,24 +111,24 @@ namespace InfernalRobotics_v3.Command
 
 		public static void AddControl(IServoGroup group, IServo servo, int index, bool updateGroup = true)
 		{
-			((ServoGroup)group).AddControl(servo, index);
+			((ServoGroup)group.group).AddControl(servo, index);
 
 			if(updateGroup)
-				((ServoGroup)group).Refresh();
+				((ServoGroup)group.group).Refresh();
 		}
 
 		public static void RemoveControl(IServoGroup group, IServo servo, bool updateServo, bool updateGroup = true)
 		{
 			if(updateServo)
 			{
-				((ModuleIRServo_v3)servo.servo).RemoveGroup(group);
+				((ModuleIRServo_v3)servo.servo).RemoveGroup(group.group);
 				((ModuleIRServo_v3)servo.servo).SerializeGroupNames();
 			}
 
-			((ServoGroup)group).RemoveControl(servo);
+			((ServoGroup)group.group).RemoveControl(servo);
 
 			if(updateGroup)
-				((ServoGroup)group).Refresh();
+				((ServoGroup)group.group).Refresh();
 		}
 
 		public static void MoveServo(IServoGroup from, IServoGroup to, IServo servo, int index, bool updateGroups = true)
@@ -147,7 +147,7 @@ namespace InfernalRobotics_v3.Command
 
 		public static void UpdateGroup(IServoGroup group)
 		{
-			((ServoGroup)group).Refresh();
+			((ServoGroup)group.group).Refresh();
 		}
 
 		////////////////////////////////////////

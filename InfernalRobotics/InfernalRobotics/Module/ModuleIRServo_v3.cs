@@ -30,10 +30,10 @@ namespace InfernalRobotics_v3.Module
 		static private float resetPrecisionRotational = 4f;
 		static private float resetPrecisionTranslational = 2f;
 
+		static float limitJointProjection = 1e-12f;
+
 		////////////////////////////////////////
 		// Data
-
-		public bool isInitialized = false;
 
 		private ConfigurableJoint Joint = null;
 
@@ -118,7 +118,7 @@ namespace InfernalRobotics_v3.Module
 		private Interpolator ip;
 
 		// Limiter to keep movements at a specific maximum speed
-		private Interceptors.Limiter lm;
+		private DummyLimiter lm;
 		private ILimiter ilm;
 
 		[KSPField(isPersistant = false), SerializeField]
@@ -310,16 +310,13 @@ namespace InfernalRobotics_v3.Module
 
 		public ModuleIRServo_v3()
 		{
-			if(!isFreeMoving)
-			{
-				ip = new Interpolator();
-				lm = new Interceptors.Limiter();
-				ilm = lm;
+			ip = new Interpolator();
+			lm = new DummyLimiter();
+			ilm = lm;
 
-				presets = new ServoPresets(this);
+			presets = new ServoPresets(this);
 	
-				GroupPositions = new List<GroupPosition>();
-			}
+			GroupPositions = new List<GroupPosition>();
 		}
 
 		public IServo servo
@@ -335,8 +332,6 @@ namespace InfernalRobotics_v3.Module
 #if DEBUG
 			DebugInit();
 #endif
-
-			isInitialized = false;
 
 			LoadConstants();
 
@@ -404,8 +399,6 @@ namespace InfernalRobotics_v3.Module
 						{ LinkedInputPart = servo; LinkedInputPart.Link(this); break; }
 					}
 				}
-
-				isInitialized = true;
 			}
 			else
 			{
@@ -512,11 +505,11 @@ namespace InfernalRobotics_v3.Module
 
 		public override void OnSave(ConfigNode config)
 		{
+			SerializePresetPositions();
+
 			base.OnSave(config);
 
 			ModuleIRController.OnSave(config, part);
-
-			SerializePresetPositions();
 		}
 
 		public override void OnLoad(ConfigNode config)
@@ -610,17 +603,20 @@ namespace InfernalRobotics_v3.Module
 		[KSPField(isPersistant = true)]
 		public bool editorRotated = false;
 
-		public float CommandedPositionS
+		public float EditorCommandedPosition
 		{
 			get
 			{
-				return (swap ? -commandedPosition : commandedPosition) + zeroNormal + correction_1 - correction_0;
+if((correction_0 != 0) || (correction_1 != 0))
+	Logger.Log("correction_ gesetzt in Editor? das darf nicht sein!!!!", Logger.Level.Error); // FEHLER, nur zum sicher gehen, dass es nicht passiert (temp)
+
+				return swap ? (commandedPosition - zeroNormal) : (commandedPosition + zeroNormal);
 			}
 		}
 
 		public void OnEditorAttached(bool detachedAsRoot)
 		{
-			float _detachPosition = swap ? -CommandedPositionS : CommandedPositionS;
+			float _detachPosition = EditorCommandedPosition;
 
 			if(swap != FindSwap())
 			{
@@ -656,7 +652,7 @@ namespace InfernalRobotics_v3.Module
 		{
 			if(detachedAsRoot)
 			{
-				float _detachPosition = swap ? -CommandedPositionS : CommandedPositionS;
+				float _detachPosition = EditorCommandedPosition;
 
 				EditorInitialize();
 
@@ -674,7 +670,7 @@ namespace InfernalRobotics_v3.Module
 		{
 			if(!editorRotated)
 			{
-				MoveChildren(swap ? -CommandedPositionS : CommandedPositionS);
+				MoveChildren(EditorCommandedPosition);
 				editorRotated = true;
 			}
 		}
@@ -689,7 +685,7 @@ namespace InfernalRobotics_v3.Module
 
 				if(part.children.Count != 0)
 				{
-					float _detachPosition = swap ? CommandedPositionS : -CommandedPositionS;
+					float _detachPosition = -EditorCommandedPosition;
 
 					MoveChildren(_detachPosition);
 
@@ -703,17 +699,17 @@ namespace InfernalRobotics_v3.Module
 			}
 		}
 
-		public Quaternion CalculateNeutralRotation(Quaternion currentRotation)
+		public Quaternion EditorCalculateNeutralRotation(Quaternion currentRotation)
 		{
-			return Quaternion.AngleAxis(swap ? CommandedPositionS : -CommandedPositionS, currentRotation * axis) * currentRotation;
+			return Quaternion.AngleAxis(-EditorCommandedPosition, currentRotation * axis) * currentRotation;
 		}
 
-		public Quaternion CalculateFinalRotation(Quaternion neutralRotation)
+		public Quaternion EditorCalculateFinalRotation(Quaternion neutralRotation)
 		{
-			return Quaternion.AngleAxis(swap ? -CommandedPositionS : CommandedPositionS, neutralRotation * axis) * neutralRotation;
+			return Quaternion.AngleAxis(EditorCommandedPosition, neutralRotation * axis) * neutralRotation;
 		}
 
-		public void _RotateBack(AttachNode node)
+		public void EditorRotateBack(AttachNode node)
 		{
 			AttachNode prefabNode = null;
 
@@ -816,8 +812,8 @@ namespace InfernalRobotics_v3.Module
 		// corrects all the values to valid values
 		private void InitializeValues()
 		{
-			_minPositionLimit = Mathf.Clamp(_minPositionLimit, minPosition, maxPosition);
-			_maxPositionLimit = Mathf.Clamp(_maxPositionLimit, minPosition, maxPosition);
+			minPositionLimit = Mathf.Clamp(minPositionLimit, minPosition, maxPosition);
+			maxPositionLimit = Mathf.Clamp(maxPositionLimit, minPosition, maxPosition);
 
 			minmaxPositionLimit.x = MinPositionLimit;
 			minmaxPositionLimit.y = MaxPositionLimit;
@@ -949,38 +945,35 @@ namespace InfernalRobotics_v3.Module
 
 		private void InitializeLimits()
 		{
+			// we don't modify *Motion, angular*Motion and the drives we don't need
+				// -> KSP defaults are ok for us
+
 			if(mode == ModeType.servo)
 			{
 				float min =
-					swap ? (hasPositionLimit ? -_maxPositionLimit : -maxPosition) : (hasPositionLimit ? _minPositionLimit : minPosition);
+					swap ? (hasPositionLimit ? -maxPositionLimit : -maxPosition) : (hasPositionLimit ? minPositionLimit : minPosition);
 				float max =
-					swap ? (hasPositionLimit ? -_minPositionLimit : -minPosition) : (hasPositionLimit ? _maxPositionLimit : maxPosition);
+					swap ? (hasPositionLimit ? -minPositionLimit : -minPosition) : (hasPositionLimit ? maxPositionLimit : maxPosition);
 
 				if(isRotational)
 				{
+					if(LimitJoint)
+					{
+						Destroy(LimitJoint);
+						LimitJoint = null;
+					}
+
 					bUseDynamicLimitJoint = (hasPositionLimit || hasMinMaxPosition) && (max - min > 140);
 
 					if(!bUseDynamicLimitJoint && (hasPositionLimit || hasMinMaxPosition))
 					{
-						// we only use (unity-)limits on this joint for parts with a small range (because of the 177° limits in unity)
+						float _min = swap ? ((hasPositionLimit ? -maxPositionLimit : -maxPosition) + correction_1 - correction_0) : ((hasPositionLimit ? minPositionLimit : minPosition) + correction_0 - correction_1);
+						float _max = swap ? ((hasPositionLimit ? -minPositionLimit : -minPosition) + correction_1 - correction_0) : ((hasPositionLimit ? maxPositionLimit : maxPosition) + correction_0 - correction_1);
 
-						SoftJointLimit lowAngularXLimit = new SoftJointLimit() { limit = -max - (swap ? correction_1-correction_0 : correction_0-correction_1) };
-						SoftJointLimit highAngularXLimit = new SoftJointLimit() { limit = -min - (swap ? correction_1-correction_0 : correction_0-correction_1) };
-
-						Joint.lowAngularXLimit = lowAngularXLimit;
-						Joint.highAngularXLimit = highAngularXLimit;
-						Joint.lowAngularXLimit = lowAngularXLimit;
-
-						Joint.angularXMotion = ConfigurableJointMotion.Limited;
-
-						if(LimitJoint)
-						{
-							Destroy(LimitJoint);
-							LimitJoint = null;
-						}
+						BuildLimitJoint(-(_max - position), -(_min - position));
 					}
-					else
-						Joint.angularXMotion = ConfigurableJointMotion.Free;
+
+					Joint.angularXMotion = ConfigurableJointMotion.Free; // FEHLER, kann nicht mehr brechen... evtl. andere Erkennung für Überlast einbauen? -> so wie im DockingPort?
 				}
 				else
 				{
@@ -1042,6 +1035,8 @@ namespace InfernalRobotics_v3.Module
 							StabilityJoint[i].configuredInWorldSpace = false;
 						}
 					}
+
+					Joint.xMotion = ConfigurableJointMotion.Limited;
 				}
 
 				min += (swap ? correction_1-correction_0 : correction_0-correction_1);
@@ -1053,6 +1048,8 @@ namespace InfernalRobotics_v3.Module
 				ip.isModulo = isModulo;
 				ip.minPosition = min;
 				ip.maxPosition = max;
+
+				Joint.targetAngularVelocity = Vector3.zero;
 			}
 			else
 			{
@@ -1061,7 +1058,12 @@ namespace InfernalRobotics_v3.Module
 					Destroy(LimitJoint);
 					LimitJoint = null;
 				}
+
+				Joint.angularXMotion = ConfigurableJointMotion.Free;
 			}
+
+			// we don't modify *Motion, angular*Motion and the drives we don't need
+				// -> KSP defaults are ok for us
 		}
 
 static bool tryInitCorrection = true;
@@ -1211,34 +1213,19 @@ while(correction_1 < -360f) correction_1 += 360f;
 
 			Joint.rotationDriveMode = RotationDriveMode.XYAndZ;
 
-			// we don't modify *Motion, angular*Motion and the drives we don't need
-				// -> KSP defaults are ok for us
-
-			if(mode == ModeType.servo)
-			{
-				if(isRotational)
-					Joint.angularXMotion = (!isFreeMoving || bUseDynamicLimitJoint) ? ConfigurableJointMotion.Limited : ConfigurableJointMotion.Free;
-				else
-					Joint.xMotion = ConfigurableJointMotion.Limited;
-
-				Joint.targetAngularVelocity = Vector3.zero;
-			}
-			else
-				Joint.angularXMotion = ConfigurableJointMotion.Free;
-
-			InitializeDrive();
-
-			InitializeLimits();
-			
 			Joint.enableCollision = false;
 			Joint.enablePreprocessing = false;
 
 			Joint.projectionMode = JointProjectionMode.None;
 
 			FixChildrenAttachement();
+
+			InitializeLimits();
+			
+			InitializeDrive();
 		}
 
-		private void BuildLimitJoint(bool p_bLowerLimitJoint, float p_min, float p_max)
+		private void BuildLimitJoint(float p_low, float p_high)
 		{
 			if(LimitJoint)
 				Destroy(LimitJoint);
@@ -1258,33 +1245,36 @@ while(correction_1 < -360f) correction_1 += 360f;
 
 			SoftJointLimit lowAngularXLimit, highAngularXLimit;
 
-			if(p_bLowerLimitJoint)
-			{
-				lowAngularXLimit = new SoftJointLimit() { limit = -170 };
-				highAngularXLimit = new SoftJointLimit() { limit = -(p_min - position) };
-			}
-			else
-			{
-				lowAngularXLimit = new SoftJointLimit() { limit = -(p_max - position) };
-				highAngularXLimit = new SoftJointLimit() { limit = 170 };
-			}
+			lowAngularXLimit = new SoftJointLimit() { limit = p_low };
+			highAngularXLimit = new SoftJointLimit() { limit = p_high };
 
 			LimitJoint.lowAngularXLimit = lowAngularXLimit;
 			LimitJoint.highAngularXLimit = highAngularXLimit;
 			LimitJoint.lowAngularXLimit = lowAngularXLimit;
 
 			LimitJoint.angularXMotion = ConfigurableJointMotion.Limited;
-			LimitJoint.angularYMotion = ConfigurableJointMotion.Locked;
-			LimitJoint.angularZMotion = ConfigurableJointMotion.Locked;
-			LimitJoint.xMotion = ConfigurableJointMotion.Locked;
-			LimitJoint.yMotion = ConfigurableJointMotion.Locked;
-			LimitJoint.zMotion = ConfigurableJointMotion.Locked;
+			LimitJoint.angularYMotion = ConfigurableJointMotion.Free;
+			LimitJoint.angularZMotion = ConfigurableJointMotion.Free;
+			LimitJoint.xMotion = ConfigurableJointMotion.Free;
+			LimitJoint.yMotion = ConfigurableJointMotion.Free;
+			LimitJoint.zMotion = ConfigurableJointMotion.Free;
 
 			LimitJoint.autoConfigureConnectedAnchor = false;
 			LimitJoint.anchor = Joint.anchor;
 			LimitJoint.connectedAnchor = Joint.connectedAnchor;
 
 			LimitJoint.configuredInWorldSpace = false;
+
+			LimitJoint.projectionMode = JointProjectionMode.PositionAndRotation;
+			LimitJoint.projectionDistance = limitJointProjection;
+			LimitJoint.projectionAngle = limitJointProjection;
+		}
+
+		private void BuildDynamicLimitJoint(bool p_bLowerLimitJoint, float p_min, float p_max)
+		{
+			BuildLimitJoint(
+				p_bLowerLimitJoint ? -170 : -(p_max - position),
+				p_bLowerLimitJoint ? -(p_min - position) : 170);
 
 			bLowerLimitJoint = p_bLowerLimitJoint;
 		}
@@ -1958,7 +1948,24 @@ if(ip.isModulo) // deckt schon alles ab von wegen keine limits und kein minmax u
 
 					if((isFreeMoving || (mode == ModeType.rotor)) && !isLocked)
 					{
-						commandedPosition = Mathf.Clamp(position, _minPositionLimit, _maxPositionLimit);
+						if(isFreeMoving)
+						{
+							float min = swap ? ((hasPositionLimit ? -maxPositionLimit : -maxPosition) + correction_1 - correction_0) : ((hasPositionLimit ? minPositionLimit : minPosition) + correction_0 - correction_1);
+							float max = swap ? ((hasPositionLimit ? -minPositionLimit : -minPosition) + correction_1 - correction_0) : ((hasPositionLimit ? maxPositionLimit : maxPosition) + correction_0 - correction_1);
+
+							commandedPosition = Mathf.Clamp(position, min /*_minPositionLimit*/, max /*_maxPositionLimit*/);
+
+							if(!IsLocked && doAutolock)
+							{
+								for(int _i = 0; _i < presets.Count; _i++)
+								{
+									if(Math.Abs(presets[_i] - CommandedPosition) < 0.001f)
+										IsLocked = true;
+								}
+							}
+						}
+						else
+							commandedPosition = position;
 
 						if(ip.isModulo)
 							updateDisplayCommandedPosition();
@@ -1971,18 +1978,18 @@ if(ip.isModulo) // deckt schon alles ab von wegen keine limits und kein minmax u
 
 					if((mode == ModeType.servo) && bUseDynamicLimitJoint)
 					{
-						float min = swap ? ((hasPositionLimit ? -_maxPositionLimit : -maxPosition) + correction_1 - correction_0) : ((hasPositionLimit ? _minPositionLimit : minPosition) + correction_0 - correction_1);
-						float max = swap ? ((hasPositionLimit ? -_minPositionLimit : -minPosition) + correction_1 - correction_0) : ((hasPositionLimit ? _maxPositionLimit : maxPosition) + correction_0 - correction_1);
+						float min = swap ? ((hasPositionLimit ? -maxPositionLimit : -maxPosition) + correction_1 - correction_0) : ((hasPositionLimit ? minPositionLimit : minPosition) + correction_0 - correction_1);
+						float max = swap ? ((hasPositionLimit ? -minPositionLimit : -minPosition) + correction_1 - correction_0) : ((hasPositionLimit ? maxPositionLimit : maxPosition) + correction_0 - correction_1);
 
 						if(min + 30 > position)
 						{
 							if(!bLowerLimitJoint || !LimitJoint)
-								BuildLimitJoint(true, min, max);
+								BuildDynamicLimitJoint(true, min, max);
 						}
 						else if(max - 30 < position)
 						{
 							if(bLowerLimitJoint || !LimitJoint)
-								BuildLimitJoint(false, min, max);
+								BuildDynamicLimitJoint(false, min, max);
 						}
 						else if(LimitJoint)
 						{
@@ -2331,6 +2338,10 @@ if(ip.isModulo) // deckt schon alles ab von wegen keine limits und kein minmax u
 			set { if(object.Equals(isLocked, value)) return; isLocked = value; onChanged_isLocked(null); }
 		}
 
+		[KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Autolock"),
+			UI_Toggle(enabledText = "Engaged", disabledText = "Disengaged", suppressEditorShipModified = true, affectSymCounterparts = UI_Scene.All)]
+		public bool doAutolock = false;
+
 		[KSPField(isPersistant = true, guiActive = true, guiActiveEditor = true, guiName = "Invert Direction"),
 			UI_Toggle(enabledText = "Inverted", disabledText = "Normal", suppressEditorShipModified = true, affectSymCounterparts = UI_Scene.None)]
 		public bool isInverted = false;
@@ -2353,6 +2364,9 @@ if(ip.isModulo) // deckt schon alles ab von wegen keine limits und kein minmax u
 			get { return isInverted; }
 			set { if(object.Equals(isInverted, value)) return; isInverted = value; onChanged_isInverted(null); }
 		}
+
+		////////////////////////////////////////
+		// Groups
 
 		internal struct GroupPosition
 		{
@@ -2473,9 +2487,9 @@ if(ip.isModulo) // deckt schon alles ab von wegen keine limits und kein minmax u
 					return;
 
 				if(!isInverted)
-					defaultPosition = Mathf.Clamp(value, _minPositionLimit, _maxPositionLimit);
+					defaultPosition = Mathf.Clamp(value, hasPositionLimit ? minPositionLimit : minPosition, hasPositionLimit ? maxPositionLimit : maxPosition);
 				else
-					defaultPosition = Mathf.Clamp(zeroInvert - value, _minPositionLimit, _maxPositionLimit);
+					defaultPosition = Mathf.Clamp(zeroInvert - value, hasPositionLimit ? minPositionLimit : minPosition, hasPositionLimit ? maxPositionLimit : maxPosition);
 
 				onChanged_defaultPosition(null);
 			}
@@ -2704,37 +2718,37 @@ if(ip.isModulo) // deckt schon alles ab von wegen keine limits und kein minmax u
 		}
 
 		[KSPField(isPersistant = true)]
-		public float _minPositionLimit = -360f;
+		public float minPositionLimit = -360f;
 
 		public float MinPositionLimit
 		{
 			get
 			{
 				if(!isInverted)
-					return _minPositionLimit;
+					return minPositionLimit;
 				else
-					return zeroInvert - _maxPositionLimit;
+					return zeroInvert - maxPositionLimit;
 			}
 			set
 			{
 			retry:
 				if(!isInverted)
 				{
-					value = Mathf.Clamp(value, minPosition, _maxPositionLimit);
+					value = Mathf.Clamp(value, minPosition, maxPositionLimit);
 
-					if(object.Equals(_minPositionLimit, value))
+					if(object.Equals(minPositionLimit, value))
 						return;
 
-					_minPositionLimit = value;
+					minPositionLimit = value;
 				}
 				else
 				{
-					value = Mathf.Clamp(zeroInvert - value, _minPositionLimit, maxPosition);
+					value = Mathf.Clamp(zeroInvert - value, minPositionLimit, maxPosition);
 
-					if(object.Equals(_maxPositionLimit, value))
+					if(object.Equals(maxPositionLimit, value))
 						return;
 
-					_maxPositionLimit = value;
+					maxPositionLimit = value;
 				}
 
 				if(CommandedPosition < MinPositionLimit)
@@ -2762,37 +2776,37 @@ if(ip.isModulo) // deckt schon alles ab von wegen keine limits und kein minmax u
 		}
 
 		[KSPField(isPersistant = true)]
-		public float _maxPositionLimit = 360f;
+		public float maxPositionLimit = 360f;
 
 		public float MaxPositionLimit
 		{
 			get
 			{
 				if(!isInverted)
-					return _maxPositionLimit;
+					return maxPositionLimit;
 				else
-					return zeroInvert - _minPositionLimit;
+					return zeroInvert - minPositionLimit;
 			}
 			set
 			{
 			retry:
 				if(!isInverted)
 				{
-					value = Mathf.Clamp(value, _minPositionLimit, maxPosition);
+					value = Mathf.Clamp(value, minPositionLimit, maxPosition);
 
-					if(object.Equals(_maxPositionLimit, value))
+					if(object.Equals(maxPositionLimit, value))
 						return;
 
-					_maxPositionLimit = value;
+					maxPositionLimit = value;
 				}
 				else
 				{
-					value = Mathf.Clamp(zeroInvert - value, minPosition, _maxPositionLimit);
+					value = Mathf.Clamp(zeroInvert - value, minPosition, maxPositionLimit);
 
-					if(object.Equals(_minPositionLimit, value))
+					if(object.Equals(minPositionLimit, value))
 						return;
 	
-					_minPositionLimit = value;
+					minPositionLimit = value;
 				}
 
 				if(CommandedPosition > MaxPositionLimit)
@@ -3501,7 +3515,7 @@ float _tgtSpeed2 = Mathf.Clamp(_tgtSpeed, 0.005f, speedLimit);
 			}
 		}
 
-		// Relax Mode (used to prevent breaking while latching of LEE and GF)
+		// Relax Mode (used to make latching of LEE/GF or similar parts possible by releasing the tension)
 
 		public void SetRelaxMode(float relaxFactor)
 		{
@@ -3708,7 +3722,7 @@ float _tgtSpeed2 = Mathf.Clamp(_tgtSpeed, 0.005f, speedLimit);
 		{
 			requestedPosition = CommandedPosition;
 
-			float _commandedPosition = swap ? -CommandedPositionS : CommandedPositionS;
+			float _commandedPosition = EditorCommandedPosition;
 
 			position = 0f;
 			lastUpdatePosition = 0f;
@@ -3816,31 +3830,10 @@ float _tgtSpeed2 = Mathf.Clamp(_tgtSpeed, 0.005f, speedLimit);
 			else
 				targetPosition = (swap ? 1.0f : -1.0f) * (targetPosition - zeroInvert);
 
-			if(hasPositionLimit)
-			{
-				targetPosition =
-					swap
-					? Mathf.Clamp(targetPosition, -_maxPositionLimit, -_minPositionLimit)
-					: Mathf.Clamp(targetPosition, _minPositionLimit, _maxPositionLimit);
-			}
-			else if(hasMinMaxPosition)
-			{
-				targetPosition =
-					swap
-					? Mathf.Clamp(targetPosition, -maxPosition, -minPosition)
-					: Mathf.Clamp(targetPosition, minPosition, maxPosition);
-			}
-
-			if(isRotational)
-			{
-				if(!hasMinMaxPosition && !hasPositionLimit) // then it is "modulo" -> from -360 to +360
-				{
-					while(targetPosition < -360f)
-						targetPosition += 360f;
-					while(targetPosition > 360f)
-						targetPosition -= 360f;
-				}
-			}
+			targetPosition =
+				swap
+				? Mathf.Clamp(targetPosition, hasPositionLimit ? -maxPositionLimit : -maxPosition, hasPositionLimit ? -minPositionLimit : -minPosition)
+				: Mathf.Clamp(targetPosition, hasPositionLimit ? minPositionLimit : minPosition, hasPositionLimit ? maxPositionLimit : maxPosition);
 
 			if(!isInverted)
 				targetPosition += (swap ? -1.0f : 1.0f) * (correction_0 - correction_1);
@@ -4102,6 +4095,8 @@ float _tgtSpeed2 = Mathf.Clamp(_tgtSpeed, 0.005f, speedLimit);
 				}
 
 				Events["RemoveFromSymmetry2"].guiActive = (part.symmetryCounterparts.Count > 0);
+
+				Fields["doAutolock"].guiActive = IsFreeMoving;
 			}
 			else if(HighLogic.LoadedSceneIsEditor)
 			{
@@ -4749,11 +4744,8 @@ float _tgtSpeed2 = Mathf.Clamp(_tgtSpeed, 0.005f, speedLimit);
 			if(!Joint)
 				return;
 
-		//	float low = Joint.lowAngularXLimit.limit;
-		//	float high = Joint.highAngularXLimit.limit;
-
-			float low = (swap ? -_maxPositionLimit : _minPositionLimit);
-			float high = (swap ? -_minPositionLimit : _maxPositionLimit);
+			float low = swap ? (hasPositionLimit ? -maxPositionLimit : -maxPosition) : (hasPositionLimit ? minPositionLimit : minPosition);
+			float high = swap ? (hasPositionLimit ? -minPositionLimit : -minPosition) : (hasPositionLimit ? maxPositionLimit : maxPosition);
 
 			DrawAxis(idx, Joint.transform,
 				(swap ? -Joint.transform.up : Joint.transform.up), false);
@@ -4769,11 +4761,8 @@ float _tgtSpeed2 = Mathf.Clamp(_tgtSpeed, 0.005f, speedLimit);
 			if(!Joint)
 				return;
 
-		//	float low = Joint.lowAngularXLimit.limit;
-		//	float high = Joint.highAngularXLimit.limit;
-
-			float min = swap ? (hasPositionLimit ? -_maxPositionLimit : -maxPosition) : (hasPositionLimit ? _minPositionLimit : minPosition);
-			float max = swap ? (hasPositionLimit ? -_minPositionLimit : -minPosition) : (hasPositionLimit ? _maxPositionLimit : maxPosition);
+			float min = swap ? (hasPositionLimit ? -maxPositionLimit : -maxPosition) : (hasPositionLimit ? minPositionLimit : minPosition);
+			float max = swap ? (hasPositionLimit ? -minPositionLimit : -minPosition) : (hasPositionLimit ? maxPositionLimit : maxPosition);
 
 			float low = min + (swap ? correction_1-correction_0 : correction_0-correction_1);
 			float high = max + (swap ? correction_1-correction_0 : correction_0-correction_1);

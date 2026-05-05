@@ -21,6 +21,9 @@
 
 		void SelectTarget(Interfaces.IServoGroup g);
 
+		void SetTarget(Interfaces.IServoGroup g, UnityEngine.Vector3 position, UnityEngine.Quaternion rotation);
+		void GetTarget(Interfaces.IServoGroup g, out UnityEngine.Vector3 position, out UnityEngine.Quaternion rotation);
+
 		void Action1(Interfaces.IServoGroup g);
 		void Action2(Interfaces.IServoGroup g);
 	}

@@ -5,11 +5,11 @@ using InfernalRobotics_v3.Interfaces;
 
 namespace InfernalRobotics_v3.Interceptors
 {
-	class IPresetableInterceptor : IPresetable
+	class PresetableInterceptor : IPresetable
 	{
 		private IPresetable p;
 
-		public IPresetableInterceptor(IPresetable presetable)
+		public PresetableInterceptor(IPresetable presetable)
 		{
 			p = presetable;
 		}
