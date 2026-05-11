@@ -71,12 +71,12 @@ namespace InfernalRobotics_v3.Command
 
 		public bool Contains(IServo servo)
 		{
-			return servos.Contains(servo);
+			return servos.Contains(servo.servo);
 		}
 
 		private void AddControl(IServo servo, int index)
 		{
-			if(servos.Contains(servo))
+			if(servos.Contains(servo.servo))
 				return;
 
 			for(int i = 0; i < servo.HostPart.symmetryCounterparts.Count; i++)
@@ -92,7 +92,7 @@ namespace InfernalRobotics_v3.Command
 
 		private void RemoveControl(IServo servo)
 		{
-			if(servos.Remove(servo))
+			if(servos.Remove(servo.servo))
 				bDirty = true;
 		}
 
