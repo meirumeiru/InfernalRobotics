@@ -8,7 +8,7 @@
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>InfernalRobotics_v3</RootNamespace>
-    <AssemblyName>InfernalRobotics_v3</AssemblyName>
+    <AssemblyName>InfernalRoboticsNext</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <SccProjectName>SAK</SccProjectName>

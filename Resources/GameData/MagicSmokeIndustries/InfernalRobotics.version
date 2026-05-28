@@ -1,4 +1,4 @@
-{
+¨${
   "NAME"     : "Infernal Robotics",
   "DOWNLOAD" : "https://github.com/meirumeiru/InfernalRobotics/releases",
   "URL"      : "https://github.com/meirumeiru/InfernalRobotics/raw/develop/Resources/GameData/MagicSmokeIndustries/InfernalRobotics.version",
@@ -9,7 +9,7 @@
   "VERSION" : {
     "MAJOR" : 3,
     "MINOR" : 1,
-    "PATCH" : 21
+    "PATCH" : 22
   },
   "KSP_VERSION" : {
     "MAJOR" : 1,
