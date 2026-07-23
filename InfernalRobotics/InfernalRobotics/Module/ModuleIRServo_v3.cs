@@ -2385,7 +2385,22 @@ if(ip.isModulo) // deckt schon alles ab von wegen keine limits und kein minmax u
 			GroupPosition m = new GroupPosition();
 			m.group = group; m.index = index;
 
-			GroupPositions.Add(m);
+			// A servo belongs to a group at most once, and a group is identified by its
+			// name (rebuilding the servo groups creates fresh group objects for the same
+			// names). If this servo already has a membership for the group, replace it in
+			// place so repeated rebuilds refresh the entry instead of accumulating stale
+			// duplicates that would grow groupName without bound.
+			int existing = -1;
+			for(int i = 0; i < GroupPositions.Count; i++)
+			{
+				if(GroupPositions[i].group.Name == group.Name)
+				{ existing = i; break; }
+			}
+
+			if(existing >= 0)
+				GroupPositions[existing] = m;
+			else
+				GroupPositions.Add(m);
 
 			for(int i = 0; i < part.symmetryCounterparts.Count; i++)
 				part.symmetryCounterparts[i].GetComponent<ModuleIRServo_v3>().GroupPositions = new List<GroupPosition>(GroupPositions);

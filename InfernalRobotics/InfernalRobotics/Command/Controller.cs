@@ -209,9 +209,17 @@ namespace InfernalRobotics_v3.Command
 					{
 						List<string> groups = new List<string>(s.groupName.Split('|'));
 
+						// A servo belongs to a group at most once; skip any repeated
+						// membership so a groupName that was persisted with duplicate tokens
+						// does not add the servo to the same group more than once.
+						var seenGroups = new HashSet<string>();
+
 						foreach(string group in groups)
 						{
 							string[] gi = group.Split(';');
+
+							if(!seenGroups.Add(gi[0]))
+								continue;
 
 							List<ServoWithIndex> servos;
 							if(!groupServos.TryGetValue(gi[0], out servos))
@@ -310,9 +318,17 @@ namespace InfernalRobotics_v3.Command
 				{
 					List<string> groups = new List<string>(s.groupName.Split('|'));
 
+					// A servo belongs to a group at most once; skip any repeated membership
+					// so a groupName that was persisted with duplicate tokens does not add
+					// the servo to the same group more than once.
+					var seenGroups = new HashSet<string>();
+
 					foreach(string group in groups)
 					{
 						string[] gi = group.Split(';');
+
+						if(!seenGroups.Add(gi[0]))
+							continue;
 
 						List<ServoWithIndex> servos;
 						if(!groupServos.TryGetValue(gi[0], out servos))
