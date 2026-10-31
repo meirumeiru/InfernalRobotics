@@ -4693,6 +4693,8 @@ float _tgtSpeed2 = Mathf.Clamp(_tgtSpeed, 0.005f, speedLimit);
 				part.SendMessage("UpdateShapeWithAnims");
 				foreach(var p in part.children)
 					p.SendMessage("UpdateShapeWithAnims");
+				
+				part.SendMessage("UpdateVoxelShape");
 
 				_far_lastPosition = position;
 			}
