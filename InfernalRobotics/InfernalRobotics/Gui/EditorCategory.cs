@@ -37,6 +37,11 @@ namespace InfernalRobotics_v3.Gui
 			}
 		}
 
+		void OnDestroy()
+		{
+			GameEvents.onGUIEditorToolbarReady.Remove(IRCustomFilter);
+		}
+
 		private void IRCustomFilter()
 		{
 			const string FILTER_CATEGORY_BYFUNCTION = "Filter by Function";
