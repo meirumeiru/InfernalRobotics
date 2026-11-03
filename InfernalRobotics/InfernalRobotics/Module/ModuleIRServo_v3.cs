@@ -539,11 +539,11 @@ namespace InfernalRobotics_v3.Module
 
 			isOnRails = false;
 
-			Initialize2();
-
 			if(Joint)
 			{
-				if(isRotational)
+				Initialize2();
+
+				if (isRotational)
 					Joint.targetRotation = Quaternion.AngleAxis(-(commandedPosition + lockPosition), Vector3.right); // rotate always around x axis
 				else
 					Joint.targetPosition = Vector3.right * (trans_zero - (commandedPosition + lockPosition)); // move always along x axis
